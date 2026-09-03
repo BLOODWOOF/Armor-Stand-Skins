@@ -1,0 +1,19 @@
+{
+	"required": true,
+	"package": "pasheadskins.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"ModelPartAccessor",
+		"CustomHeadLayerMixin",
+		"PasEntityRenderStateMixin",
+		"PasEntityRendererMixin",
+		"PasModelPartStateMixin",
+		"PlayerArmorStandModelMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

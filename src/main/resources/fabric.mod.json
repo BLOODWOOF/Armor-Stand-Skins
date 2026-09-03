@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "pasheadskins",
+	"version": "${version}",
+	"name": "PAS Head Skins",
+	"description": "Companion for Player Armor Stands. Unnamed armor stands wearing a player head use that head's skin.",
+	"authors": [
+		"BLOODWOLF"
+	],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"pasheadskins.PasHeadSkinsClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "pasheadskins.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*",
+		"pas": "*"
+	},
+	"suggests": {
+		"skinlayers3d": "*"
+	}
+}
