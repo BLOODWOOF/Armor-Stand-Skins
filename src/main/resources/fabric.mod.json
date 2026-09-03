@@ -3,7 +3,7 @@
 	"id": "pasheadskins",
 	"version": "${version}",
 	"name": "PAS Head Skins",
-	"description": "Companion for Player Armor Stands. Unnamed armor stands wearing a player head use that head's skin.",
+	"description": "Client companion for Player Armor Stands. Unnamed stands wearing a player head use that player's skin.",
 	"authors": [
 		"BLOODWOLF"
 	],
