@@ -9,10 +9,15 @@ public final class HeadSkinFlags {
 	}
 
 	public static boolean isDisabled(ArmorStand stand) {
-		return ((HeadSkinHolder) stand).pasheadskins$isDisabled();
+		if (stand instanceof HeadSkinHolder holder) {
+			return holder.pasheadskins$isDisabled();
+		}
+		return false;
 	}
 
 	public static void setDisabled(ArmorStand stand, boolean disabled) {
-		((HeadSkinHolder) stand).pasheadskins$setDisabled(disabled);
+		if (stand instanceof HeadSkinHolder holder) {
+			holder.pasheadskins$setDisabled(disabled);
+		}
 	}
 }

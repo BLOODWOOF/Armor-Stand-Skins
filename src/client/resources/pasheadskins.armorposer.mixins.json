@@ -2,10 +2,10 @@
 	"required": false,
 	"minVersion": "0.8",
 	"package": "pasheadskins.mixin",
+	"plugin": "pasheadskins.mixin.PasHeadSkinsMixinPlugin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ArmorStandRenderStateMixin",
-		"ArmorStandRendererMixin"
+		"ArmorStandScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

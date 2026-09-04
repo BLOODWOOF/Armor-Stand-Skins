@@ -1,3 +1,4 @@
 {
-	"pasheadskins.toggle.head_skin": "Disable head skin"
+	"pasheadskins.gui.label.head_skin": "Head Skin",
+	"pasheadskins.gui.tooltip.head_skin": "Render this stand as the player from its helmet"
 }

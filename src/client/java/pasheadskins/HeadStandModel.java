@@ -3,7 +3,6 @@ package pasheadskins;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.object.armorstand.ArmorStandArmorModel;
 import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
@@ -26,10 +25,8 @@ public class HeadStandModel extends ArmorStandArmorModel {
 		this.jacket = this.body.getChild("jacket");
 	}
 
-	public static HeadStandModel bakeSmall(boolean slim) {
-		ModelPart root = LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, slim), 64, 64)
-			.apply(HumanoidModel.BABY_TRANSFORMER)
-			.bakeRoot();
+	public static HeadStandModel bake(boolean slim) {
+		ModelPart root = LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, slim), 64, 64).bakeRoot();
 		return new HeadStandModel(root, slim);
 	}
 
@@ -48,7 +45,10 @@ public class HeadStandModel extends ArmorStandArmorModel {
 		showOverlay(this.rightPants);
 
 		if (state instanceof HeadStandRender head && head.pasheadskins$usingHeadSkin()) {
-			SkinLayerCompat.apply(this, head.pasheadskins$texture(), this.slim);
+			try {
+				SkinLayerCompat.apply(this, head.pasheadskins$texture(), this.slim);
+			} catch (Throwable ignored) {
+			}
 		}
 	}
 

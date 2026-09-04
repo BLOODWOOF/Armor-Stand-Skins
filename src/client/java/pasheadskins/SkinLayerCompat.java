@@ -14,6 +14,15 @@ public final class SkinLayerCompat {
 			return;
 		}
 
-		SkinLayerSupport.apply(model, texture, slim);
+		try {
+			Holder.apply(model, texture, slim);
+		} catch (Throwable ignored) {
+		}
+	}
+
+	private static final class Holder {
+		private static void apply(HeadStandModel model, Identifier texture, boolean slim) {
+			SkinLayerSupport.apply(model, texture, slim);
+		}
 	}
 }

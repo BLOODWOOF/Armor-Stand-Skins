@@ -1,6 +1,7 @@
 package pasheadskins;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.ItemStack;
@@ -9,13 +10,11 @@ public final class EquippedHeadHider {
 	private EquippedHeadHider() {
 	}
 
-	public static boolean shouldHide(Object state) {
-		return state instanceof HeadStandRender head && head.pasheadskins$usingHeadSkin();
-	}
-
-	public static void hideOnState(net.minecraft.client.renderer.entity.state.ArmorStandRenderState state) {
+	public static void hideOnState(ArmorStandRenderState state) {
 		state.headEquipment = ItemStack.EMPTY;
-		state.headItem.clear();
+		if (state.headItem != null) {
+			state.headItem.clear();
+		}
 		state.wornHeadProfile = null;
 		state.wornHeadType = null;
 	}
