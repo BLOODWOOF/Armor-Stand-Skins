@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "pasheadskins",
 	"version": "${version}",
-	"name": "Head Skins",
+	"name": "Armor Stand Skins",
 	"description": "Armor stands wearing a player head render as that player. Optional Armor Poser toggle to turn the skin off per stand.",
 	"authors": [
 		"BLOODWOLF"
@@ -12,6 +12,7 @@
 		"sources": "https://github.com/BLOODWOOF/PAS-head-companion"
 	},
 	"license": "MIT",
+	"icon": "assets/pasheadskins/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
