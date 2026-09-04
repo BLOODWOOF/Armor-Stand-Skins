@@ -2,19 +2,27 @@
 	"schemaVersion": 1,
 	"id": "pasheadskins",
 	"version": "${version}",
-	"name": "PAS Head Skins",
-	"description": "Client companion for Player Armor Stands. Unnamed stands wearing a player head use that player's skin.",
+	"name": "Head Skins",
+	"description": "Armor stands wearing a player head render as that player. Optional Armor Poser toggle to turn the skin off per stand.",
 	"authors": [
 		"BLOODWOLF"
 	],
+	"contact": {
+		"homepage": "https://modrinth.com/user/BLOODWOOF",
+		"sources": "https://github.com/BLOODWOOF/PAS-head-companion"
+	},
 	"license": "MIT",
-	"environment": "client",
+	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"pasheadskins.PasHeadSkins"
+		],
 		"client": [
 			"pasheadskins.PasHeadSkinsClient"
 		]
 	},
 	"mixins": [
+		"pasheadskins.mixins.json",
 		{
 			"config": "pasheadskins.client.mixins.json",
 			"environment": "client"
@@ -24,10 +32,10 @@
 		"fabricloader": ">=0.19.3",
 		"minecraft": "~26.2",
 		"java": ">=25",
-		"fabric-api": "*",
-		"pas": "*"
+		"fabric-api": "*"
 	},
 	"suggests": {
+		"armorposer": "*",
 		"skinlayers3d": "*"
 	}
 }

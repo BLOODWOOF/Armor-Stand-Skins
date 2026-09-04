@@ -1,13 +1,9 @@
 {
 	"required": true,
 	"package": "pasheadskins.mixin",
-	"plugin": "pasheadskins.mixin.PasHeadSkinsMixinPlugin",
 	"compatibilityLevel": "JAVA_25",
-	"client": [
-		"CustomHeadLayerMixin",
-		"ArmorStandRenderStateMixin",
-		"ArmorStandRendererMixin",
-		"ArmorStandScreenMixin"
+	"mixins": [
+		"ArmorStandMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

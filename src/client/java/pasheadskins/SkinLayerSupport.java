@@ -1,10 +1,6 @@
 package pasheadskins;
 
-import com.danrus.pas.api.info.NameInfo;
-import com.danrus.pas.managers.PasManager;
-import com.danrus.pas.render.armorstand.PlayerArmorStandModel;
 import com.mojang.blaze3d.platform.NativeImage;
-import dev.tr7zw.skinlayers.SkinLayersModBase;
 import dev.tr7zw.skinlayers.SkinUtil;
 import dev.tr7zw.skinlayers.accessor.ModelPartInjector;
 import dev.tr7zw.skinlayers.accessor.PlayerSettings;
@@ -12,55 +8,33 @@ import dev.tr7zw.skinlayers.api.Mesh;
 import dev.tr7zw.skinlayers.api.MeshHelper;
 import dev.tr7zw.skinlayers.api.OffsetProvider;
 import dev.tr7zw.skinlayers.api.SkinLayersAPI;
-import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.resources.Identifier;
 
-final class SkinLayerPasSupport {
+final class SkinLayerSupport {
 	private static final Map<LayerKey, CachedLayers> LAYER_CACHE = new ConcurrentHashMap<>();
-	private static final Map<Object, InjectedLayer> INJECTED_AT_SUBMIT = new IdentityHashMap<>();
 
-	private SkinLayerPasSupport() {
+	private SkinLayerSupport() {
 	}
 
-	static void apply(Object standModel, Object nameInfoObj) {
-		if (!(standModel instanceof PlayerArmorStandModel model) || !(nameInfoObj instanceof NameInfo info)) {
-			return;
-		}
-
-		if (info.isEmpty() || SkinLayersModBase.config == null) {
-			clear(model);
-			return;
-		}
-
-		Identifier texture = PasManager.getInstance().getSkinWithOverlayTexture(info);
-		if (texture == null) {
-			return;
-		}
-
-		boolean slim = info.isSlim();
+	static void apply(HeadStandModel model, Identifier texture, boolean slim) {
 		CachedLayers layers = LAYER_CACHE.computeIfAbsent(new LayerKey(texture, slim), key -> new CachedLayers());
 		if (!buildIfNeeded(layers, texture, slim)) {
 			return;
 		}
 
-		boolean slimArms = layers.hasThinArms();
 		inject(model.hat, layers.getHeadMesh(), OffsetProvider.HEAD);
 		inject(model.jacket, layers.getTorsoMesh(), OffsetProvider.BODY);
 		inject(model.leftPants, layers.getLeftLegMesh(), OffsetProvider.LEFT_LEG);
 		inject(model.rightPants, layers.getRightLegMesh(), OffsetProvider.RIGHT_LEG);
-		if (slimArms) {
-			inject(model.leftSlimSleeve, layers.getLeftArmMesh(), OffsetProvider.LEFT_ARM_SLIM);
-			inject(model.rightSlimSleeve, layers.getRightArmMesh(), OffsetProvider.RIGHT_ARM_SLIM);
-			inject(model.leftSleeve, null, null);
-			inject(model.rightSleeve, null, null);
+		if (slim) {
+			inject(model.leftSleeve, layers.getLeftArmMesh(), OffsetProvider.LEFT_ARM_SLIM);
+			inject(model.rightSleeve, layers.getRightArmMesh(), OffsetProvider.RIGHT_ARM_SLIM);
 		} else {
 			inject(model.leftSleeve, layers.getLeftArmMesh(), OffsetProvider.LEFT_ARM);
 			inject(model.rightSleeve, layers.getRightArmMesh(), OffsetProvider.RIGHT_ARM);
-			inject(model.leftSlimSleeve, null, null);
-			inject(model.rightSlimSleeve, null, null);
 		}
 	}
 
@@ -91,45 +65,14 @@ final class SkinLayerPasSupport {
 		return true;
 	}
 
-	private static void clear(PlayerArmorStandModel model) {
-		inject(model.hat, null, null);
-		inject(model.jacket, null, null);
-		inject(model.leftSleeve, null, null);
-		inject(model.rightSleeve, null, null);
-		inject(model.leftSlimSleeve, null, null);
-		inject(model.rightSlimSleeve, null, null);
-		inject(model.leftPants, null, null);
-		inject(model.rightPants, null, null);
-	}
-
 	private static void inject(ModelPart part, Mesh mesh, OffsetProvider offset) {
 		if (part == null) {
 			return;
 		}
 
-		if (mesh != null) {
-			part.visible = true;
-			part.skipDraw = false;
-		}
-
+		part.visible = true;
+		part.skipDraw = false;
 		((ModelPartInjector) (Object) part).setInjectedMesh(mesh, offset);
-	}
-
-	static void snapshotInjector(Object state, ModelPart part) {
-		ModelPartInjector injector = (ModelPartInjector) (Object) part;
-		INJECTED_AT_SUBMIT.put(state, new InjectedLayer(part, injector.getInjectedMesh(), injector.getOffsetProvider()));
-	}
-
-	static void restoreInjector(Object state) {
-		InjectedLayer layer = INJECTED_AT_SUBMIT.remove(state);
-		if (layer == null) {
-			return;
-		}
-
-		((ModelPartInjector) (Object) layer.part()).setInjectedMesh(layer.mesh(), layer.offset());
-	}
-
-	private record InjectedLayer(ModelPart part, Mesh mesh, OffsetProvider offset) {
 	}
 
 	private record LayerKey(Identifier texture, boolean slim) {

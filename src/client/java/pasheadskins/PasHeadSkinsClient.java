@@ -1,15 +1,14 @@
 package pasheadskins;
 
 import net.fabricmc.api.ClientModInitializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import pasheadskins.net.HeadSkinDisabledPayload;
 
 public class PasHeadSkinsClient implements ClientModInitializer {
-	public static final String MOD_ID = "pasheadskins";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-
 	@Override
 	public void onInitializeClient() {
-		LOGGER.info("PAS Head Skins ready");
+		ClientPlayNetworking.registerGlobalReceiver(HeadSkinDisabledPayload.TYPE, (payload, context) -> {
+			context.client().execute(() -> EquippedHeadHider.applyPacket(payload.entityId(), payload.disabled()));
+		});
 	}
 }
