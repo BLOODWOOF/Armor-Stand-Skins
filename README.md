@@ -22,14 +22,6 @@ Dedicated servers without this jar will not persist the flag. The Armor Poser bu
 
 The stand uses that skin, slim or wide, from the head. Pose it with vanilla commands or Armor Poser. Use the Armor Poser toggle if you want the wooden stand back on that entity.
 
-## Build
-
-```bat
-gradlew.bat build
-```
-
-The output jar is `build/libs/armorstand-skins-<version>.jar`. Compile-only copies of Armor Poser and 3D Skin Layers belong in `libs/` and are not shipped in the jar.
-
 ## License
 
 MIT. Copyright BLOODWOLF.
