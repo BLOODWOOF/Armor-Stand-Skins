@@ -9,11 +9,11 @@ Fabric mod for Minecraft 26.2. An armor stand wearing a player head is drawn as 
 - Fabric API
 - Java 25
 
-[Armor Poser](https://modrinth.com/mod/armor-poser) is optional. If it is loaded, its armor stand screen gets a Head Skin Yes/No toggle under Scale. That toggle turns the skin off for that stand only and saves on the entity (`HeadSkinDisabled`). Put this jar on the server as well if you want the flag to persist and stay in sync for other players.
+[Armor Poser](https://modrinth.com/mod/armor-poser) is optional. If it is loaded, its armor stand screen gets a Head Skin Yes/No toggle under Scale. That toggle is remembered on your client, and if this jar is also on the server it is saved on the stand as `HeadSkinDisabled`.
 
 [3D Skin Layers](https://modrinth.com/mod/3dskinlayers) is optional. If it is present, hat, jacket, sleeves, and pants get the extra 3D overlay on skinned stands.
 
-Dedicated servers without this jar will not persist the flag. The Armor Poser button still flips the skin off locally for the person who clicked it.
+Without the jar on a dedicated server, other players still see whatever their own client draws. Putting it on the server later uses the same NBT key, so you do not need a new format.
 
 ## Usage
 
@@ -21,14 +21,6 @@ Dedicated servers without this jar will not persist the flag. The Armor Poser bu
 2. Put a player head on it.
 
 The stand uses that skin, slim or wide, from the head. Pose it with vanilla commands or Armor Poser. Use the Armor Poser toggle if you want the wooden stand back on that entity.
-
-## Build
-
-```bat
-gradlew.bat build
-```
-
-The output jar is `build/libs/armorstand-skins-<version>.jar`. Compile-only copies of Armor Poser and 3D Skin Layers belong in `libs/` and are not shipped in the jar.
 
 ## License
 
