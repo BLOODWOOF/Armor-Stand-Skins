@@ -1,6 +1,7 @@
 package pasheadskins.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.object.armorstand.ArmorStandArmorModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -28,6 +29,7 @@ import pasheadskins.HeadSkinFlags;
 import pasheadskins.HeadSkinLookup;
 import pasheadskins.HeadStandModel;
 import pasheadskins.HeadStandRender;
+import pasheadskins.net.HeadSkinLockPayload;
 
 @Mixin(ArmorStandRenderer.class)
 public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<ArmorStand, ArmorStandRenderState, ArmorStandArmorModel> {
@@ -67,9 +69,22 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 				return;
 			}
 
-			ResolvableProfile profile = HeadSkinLookup.profileFromHelmet(stand);
-			if (profile == null) {
+			ResolvableProfile helmet = HeadSkinLookup.profileFromHelmet(stand);
+			if (helmet == null) {
 				return;
+			}
+
+			ResolvableProfile profile = helmet;
+			if (HeadSkinFlags.isLocked(stand)) {
+				ResolvableProfile locked = HeadSkinFlags.lockedProfile(stand);
+				if (locked != null && HeadSkinLookup.sameIdentity(helmet, locked)) {
+					profile = locked;
+				} else {
+					HeadSkinFlags.setLocked(stand, false, null);
+					if (ClientPlayNetworking.canSend(HeadSkinLockPayload.TYPE)) {
+						ClientPlayNetworking.send(HeadSkinLockPayload.of(stand.getId(), false, null));
+					}
+				}
 			}
 
 			Minecraft client = Minecraft.getInstance();

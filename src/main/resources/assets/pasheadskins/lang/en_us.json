@@ -1,4 +1,6 @@
 {
 	"pasheadskins.gui.label.head_skin": "Head Skin",
-	"pasheadskins.gui.tooltip.head_skin": "Render this stand as the player from its helmet"
+	"pasheadskins.gui.tooltip.head_skin": "Render this stand as the player from its helmet",
+	"pasheadskins.gui.label.lock_skin": "Lock Skin",
+	"pasheadskins.gui.tooltip.lock_skin": "Keep the current look after the player changes skins. A different player head unlocks it. Wait until the skin has loaded before locking."
 }

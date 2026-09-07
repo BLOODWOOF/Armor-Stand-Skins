@@ -5,12 +5,14 @@ import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ResolvableProfile;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public final class EquippedHeadHider {
-	private static final Map<Integer, Boolean> pending = new HashMap<>();
+	private static final Map<Integer, Boolean> pendingDisabled = new HashMap<>();
+	private static final Map<Integer, HeadSkinLockPayloadState> pendingLock = new HashMap<>();
 
 	private EquippedHeadHider() {
 	}
@@ -24,32 +26,56 @@ public final class EquippedHeadHider {
 		state.wornHeadType = null;
 	}
 
-	public static void applyPacket(int entityId, boolean disabled) {
+	public static void applyDisabledPacket(int entityId, boolean disabled) {
 		Minecraft client = Minecraft.getInstance();
 		if (client.level == null) {
-			pending.put(entityId, disabled);
+			pendingDisabled.put(entityId, disabled);
 			return;
 		}
 
 		Entity entity = client.level.getEntity(entityId);
 		if (entity instanceof ArmorStand stand) {
 			HeadSkinFlags.setDisabled(stand, disabled);
-			pending.remove(entityId);
+			pendingDisabled.remove(entityId);
 			return;
 		}
 
-		pending.put(entityId, disabled);
+		pendingDisabled.put(entityId, disabled);
+	}
+
+	public static void applyLockPacket(int entityId, boolean locked, ResolvableProfile profile) {
+		Minecraft client = Minecraft.getInstance();
+		if (client.level == null) {
+			pendingLock.put(entityId, new HeadSkinLockPayloadState(locked, profile));
+			return;
+		}
+
+		Entity entity = client.level.getEntity(entityId);
+		if (entity instanceof ArmorStand stand) {
+			HeadSkinFlags.setLocked(stand, locked, profile);
+			pendingLock.remove(entityId);
+			return;
+		}
+
+		pendingLock.put(entityId, new HeadSkinLockPayloadState(locked, profile));
 	}
 
 	public static void applyLoadedStand(ArmorStand stand) {
-		Boolean fromServer = pending.remove(stand.getId());
-		if (fromServer != null) {
-			HeadSkinFlags.setDisabled(stand, fromServer);
-			return;
-		}
-
-		if (DisabledHeadSkins.isDisabled(stand) && stand instanceof HeadSkinHolder holder) {
+		Boolean disabled = pendingDisabled.remove(stand.getId());
+		if (disabled != null) {
+			HeadSkinFlags.setDisabled(stand, disabled);
+		} else if (DisabledHeadSkins.isDisabled(stand) && stand instanceof HeadSkinHolder holder) {
 			holder.pasheadskins$setDisabled(true);
 		}
+
+		HeadSkinLockPayloadState lock = pendingLock.remove(stand.getId());
+		if (lock != null) {
+			HeadSkinFlags.setLocked(stand, lock.locked(), lock.profile());
+		} else if (LockedHeadSkins.isLocked(stand) && stand instanceof HeadSkinHolder holder) {
+			holder.pasheadskins$setLocked(true, LockedHeadSkins.lockedProfile(stand));
+		}
+	}
+
+	private record HeadSkinLockPayloadState(boolean locked, ResolvableProfile profile) {
 	}
 }

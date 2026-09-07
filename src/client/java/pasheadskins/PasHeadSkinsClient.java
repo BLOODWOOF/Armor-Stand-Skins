@@ -5,12 +5,15 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.item.component.ResolvableProfile;
 import pasheadskins.net.HeadSkinDisabledPayload;
+import pasheadskins.net.HeadSkinLockPayload;
 
 public class PasHeadSkinsClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		DisabledHeadSkins.load();
+		LockedHeadSkins.load();
 		HeadSkinFlags.bind(new HeadSkinFlags.Lookup() {
 			@Override
 			public boolean isDisabled(ArmorStand stand) {
@@ -21,10 +24,32 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			public void setDisabled(ArmorStand stand, boolean disabled) {
 				DisabledHeadSkins.setDisabled(stand, disabled);
 			}
+
+			@Override
+			public boolean isLocked(ArmorStand stand) {
+				return LockedHeadSkins.isLocked(stand);
+			}
+
+			@Override
+			public ResolvableProfile lockedProfile(ArmorStand stand) {
+				return LockedHeadSkins.lockedProfile(stand);
+			}
+
+			@Override
+			public void setLocked(ArmorStand stand, boolean locked, ResolvableProfile profile) {
+				LockedHeadSkins.setLocked(stand, locked, profile);
+			}
 		});
 
 		ClientPlayNetworking.registerGlobalReceiver(HeadSkinDisabledPayload.TYPE, (payload, context) -> {
-			context.client().execute(() -> EquippedHeadHider.applyPacket(payload.entityId(), payload.disabled()));
+			context.client().execute(() -> EquippedHeadHider.applyDisabledPacket(payload.entityId(), payload.disabled()));
+		});
+		ClientPlayNetworking.registerGlobalReceiver(HeadSkinLockPayload.TYPE, (payload, context) -> {
+			context.client().execute(() -> EquippedHeadHider.applyLockPacket(
+				payload.entityId(),
+				payload.locked(),
+				payload.profile().orElse(null)
+			));
 		});
 
 		ClientEntityEvents.ENTITY_LOAD.register((entity, world) -> {
@@ -33,6 +58,9 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			}
 		});
 
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> DisabledHeadSkins.save());
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			DisabledHeadSkins.save();
+			LockedHeadSkins.save();
+		});
 	}
 }

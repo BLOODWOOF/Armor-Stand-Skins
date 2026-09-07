@@ -4,8 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.world.entity.decoration.ArmorStand;
 
 import java.io.IOException;
@@ -101,21 +99,7 @@ final class DisabledHeadSkins {
 	}
 
 	private static String worldKey() {
-		Minecraft client = Minecraft.getInstance();
-		if (client == null) {
-			return "unknown";
-		}
-
-		ServerData server = client.getCurrentServer();
-		if (server != null && server.ip != null && !server.ip.isEmpty()) {
-			return "mp:" + server.ip;
-		}
-
-		if (client.hasSingleplayerServer() && client.getSingleplayerServer() != null) {
-			return "sp:" + client.getSingleplayerServer().getServerDirectory().getFileName();
-		}
-
-		return "unknown";
+		return ClientWorldKey.current();
 	}
 
 	private static Path file() {
