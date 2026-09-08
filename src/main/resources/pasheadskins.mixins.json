@@ -3,7 +3,8 @@
 	"package": "pasheadskins.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"ArmorStandMixin"
+		"ArmorStandMixin",
+		"LivingEntityMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

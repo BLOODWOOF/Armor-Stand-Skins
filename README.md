@@ -20,7 +20,7 @@ Without the jar on a dedicated server, other players still see whatever their ow
 1. Place an armor stand.
 2. Put a player head on it.
 
-The stand uses that skin, slim or wide, from the head. Pose it with vanilla commands or Armor Poser. Use Head Skin if you want the wooden stand back on that entity. Use Lock Skin after the look has loaded if you want to change your own skin without updating the stand.
+The stand uses that skin, slim or wide, from the head. Putting a player head on also turns arms on so you can give it items; turning Show Arms off hides the skin arms too. Pose it with vanilla commands or Armor Poser. Use Head Skin if you want the wooden stand back on that entity. Use Lock Skin after the look has loaded if you want to change your own skin without updating the stand.
 
 ## License
 

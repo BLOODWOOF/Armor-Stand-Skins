@@ -4,7 +4,9 @@ import com.mrbysco.armorposer.client.gui.ArmorStandScreen;
 import com.mrbysco.armorposer.client.gui.widgets.ToggleButton;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
@@ -41,6 +43,13 @@ public abstract class ArmorStandScreenMixin extends Screen {
 
 	@Inject(method = "init()V", at = @At("RETURN"))
 	private void pasheadskins$addHeadSkinToggle(CallbackInfo ci) {
+		int posesY = this.height / 4 + 134;
+		for (GuiEventListener child : this.children()) {
+			if (child instanceof AbstractWidget widget && widget.getY() >= posesY) {
+				widget.setY(widget.getY() + 44);
+			}
+		}
+
 		ArmorStand stand = this.getArmorStandEntity();
 		int skinRow = this.toggleButtons.length + 2;
 		int lockRow = this.toggleButtons.length + 3;
@@ -60,7 +69,7 @@ public abstract class ArmorStandScreenMixin extends Screen {
 			.tooltip(Tooltip.create(Component.translatable("pasheadskins.gui.tooltip.head_skin")))
 			.build();
 
-		ToggleButton lock = new ToggleButton.Builder(HeadSkinFlags.isLocked(stand), clicked -> {
+		ToggleButton lock = new ToggleButton.Builder(false, clicked -> {
 			if (!(clicked instanceof ToggleButton toggle)) {
 				return;
 			}
@@ -81,6 +90,10 @@ public abstract class ArmorStandScreenMixin extends Screen {
 		}).bounds(110, 20 + lockRow * 22, 40, 20)
 			.tooltip(Tooltip.create(Component.translatable("pasheadskins.gui.tooltip.lock_skin")))
 			.build();
+
+		if (HeadSkinFlags.isLocked(stand)) {
+			lock.setValue(true);
+		}
 
 		this.addRenderableWidget(skin);
 		this.addRenderableWidget(lock);

@@ -39,15 +39,30 @@ public class HeadStandModel extends ArmorStandArmorModel {
 		super.setupAnim(state);
 		showOverlay(this.hat);
 		showOverlay(this.jacket);
-		showOverlay(this.leftSleeve);
-		showOverlay(this.rightSleeve);
 		showOverlay(this.leftPants);
 		showOverlay(this.rightPants);
+
+		boolean arms = state.showArms;
+		this.leftArm.visible = arms;
+		this.rightArm.visible = arms;
+		if (arms) {
+			showOverlay(this.leftSleeve);
+			showOverlay(this.rightSleeve);
+		} else {
+			this.leftSleeve.visible = false;
+			this.rightSleeve.visible = false;
+		}
 
 		if (state instanceof HeadStandRender head && head.pasheadskins$usingHeadSkin()) {
 			try {
 				SkinLayerCompat.apply(this, head.pasheadskins$texture(), this.slim);
 			} catch (Throwable ignored) {
+			}
+			if (!arms) {
+				this.leftArm.visible = false;
+				this.rightArm.visible = false;
+				this.leftSleeve.visible = false;
+				this.rightSleeve.visible = false;
 			}
 		}
 	}

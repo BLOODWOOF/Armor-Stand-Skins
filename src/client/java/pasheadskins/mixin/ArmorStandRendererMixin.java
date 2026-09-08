@@ -15,6 +15,7 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.PlayerModelType;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ResolvableProfile;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -101,6 +102,17 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 			boolean slim = info.playerSkin().model() == PlayerModelType.SLIM;
 			head.pasheadskins$setHeadSkin(texture, slim);
 			EquippedHeadHider.hideOnState(state);
+			state.isBaby = false;
+			if (!state.showArms) {
+				state.rightHandItemStack = ItemStack.EMPTY;
+				state.leftHandItemStack = ItemStack.EMPTY;
+				if (state.rightHandItemState != null) {
+					state.rightHandItemState.clear();
+				}
+				if (state.leftHandItemState != null) {
+					state.leftHandItemState.clear();
+				}
+			}
 		} catch (Throwable ignored) {
 			head.pasheadskins$clearHeadSkin();
 		}
