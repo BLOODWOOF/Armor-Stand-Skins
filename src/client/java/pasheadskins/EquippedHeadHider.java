@@ -14,6 +14,7 @@ public final class EquippedHeadHider {
 	private static final Map<Integer, Boolean> pendingDisabled = new HashMap<>();
 	private static final Map<Integer, HeadSkinLockPayloadState> pendingLock = new HashMap<>();
 	private static final Map<Integer, Boolean> pendingCape = new HashMap<>();
+	private static final Map<Integer, CapeSource> pendingCapeSource = new HashMap<>();
 
 	private EquippedHeadHider() {
 	}
@@ -78,26 +79,73 @@ public final class EquippedHeadHider {
 		pendingCape.put(entityId, enabled);
 	}
 
+	public static void applyCapeSourcePacket(int entityId, CapeSource source) {
+		Minecraft client = Minecraft.getInstance();
+		CapeSource next = source == null ? CapeSource.BOTH : source;
+		if (client.level == null) {
+			pendingCapeSource.put(entityId, next);
+			return;
+		}
+
+		Entity entity = client.level.getEntity(entityId);
+		if (entity instanceof ArmorStand stand) {
+			HeadSkinFlags.setCapeSource(stand, next);
+			pendingCapeSource.remove(entityId);
+			return;
+		}
+
+		pendingCapeSource.put(entityId, next);
+	}
+
 	public static void applyLoadedStand(ArmorStand stand) {
 		Boolean disabled = pendingDisabled.remove(stand.getId());
-		if (disabled != null) {
-			HeadSkinFlags.setDisabled(stand, disabled);
-		} else if (DisabledHeadSkins.isDisabled(stand) && stand instanceof HeadSkinHolder holder) {
+		HeadSkinLockPayloadState lock = pendingLock.remove(stand.getId());
+		Boolean cape = pendingCape.remove(stand.getId());
+		CapeSource capeSource = pendingCapeSource.remove(stand.getId());
+		boolean fromPacket = disabled != null || lock != null || cape != null || capeSource != null;
+
+		if (fromPacket) {
+			if (disabled != null) {
+				HeadSkinFlags.setDisabled(stand, disabled);
+			}
+			if (lock != null) {
+				HeadSkinFlags.setLocked(stand, lock.locked(), lock.profile());
+			}
+			if (cape != null) {
+				HeadSkinFlags.setCapeEnabled(stand, cape);
+			}
+			if (capeSource != null) {
+				HeadSkinFlags.setCapeSource(stand, capeSource);
+			} else {
+				applySavedCapeSource(stand);
+			}
+			return;
+		}
+
+		if (!HeadSkinFlags.packetChannelOpen() && StandSlotFlags.hasRecord(stand)) {
+			StandSlotFlags.applyToHolder(stand);
+			return;
+		}
+
+		if (DisabledHeadSkins.isDisabled(stand) && stand instanceof HeadSkinHolder holder) {
 			holder.pasheadskins$setDisabled(true);
 		}
-
-		HeadSkinLockPayloadState lock = pendingLock.remove(stand.getId());
-		if (lock != null) {
-			HeadSkinFlags.setLocked(stand, lock.locked(), lock.profile());
-		} else if (LockedHeadSkins.isLocked(stand) && stand instanceof HeadSkinHolder holder) {
+		if (LockedHeadSkins.isLocked(stand) && stand instanceof HeadSkinHolder holder) {
 			holder.pasheadskins$setLocked(true, LockedHeadSkins.lockedProfile(stand));
 		}
-
-		Boolean cape = pendingCape.remove(stand.getId());
-		if (cape != null) {
-			HeadSkinFlags.setCapeEnabled(stand, cape);
-		} else if (EnabledCapes.isEnabled(stand) && stand instanceof HeadSkinHolder holder) {
+		if (EnabledCapes.isEnabled(stand) && stand instanceof HeadSkinHolder holder) {
 			holder.pasheadskins$setCapeEnabled(true);
+		}
+		applySavedCapeSource(stand);
+	}
+
+	private static void applySavedCapeSource(ArmorStand stand) {
+		if (!(stand instanceof HeadSkinHolder holder)) {
+			return;
+		}
+		CapeSource stored = CapeSources.get(stand);
+		if (stored != CapeSource.BOTH) {
+			holder.pasheadskins$setCapeSource(stored);
 		}
 	}
 

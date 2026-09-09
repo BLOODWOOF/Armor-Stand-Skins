@@ -51,6 +51,15 @@ public final class HeadSkinLookup {
 	}
 
 	public static ResolvableProfile snapshotIfReady(ResolvableProfile helmet) {
+		FrozenLook look = freezeIfReady(helmet);
+		return look == null ? null : look.profile();
+	}
+
+	public static FrozenLook freezeIfReady(ResolvableProfile helmet) {
+		return freezeIfReady(helmet, CapeSource.BOTH);
+	}
+
+	public static FrozenLook freezeIfReady(ResolvableProfile helmet, CapeSource source) {
 		if (helmet == null) {
 			return null;
 		}
@@ -70,31 +79,149 @@ public final class HeadSkinLookup {
 			return null;
 		}
 
-		return ResolvableProfile.createResolved(resolved);
+		Identifier[] cloak = capeAndElytra(client, helmet, resolved, info.playerSkin(), source);
+		return new FrozenLook(ResolvableProfile.createResolved(resolved), cloak[0], cloak[1]);
 	}
 
-	// Skull NBT usually has the body skin and no cape. Online players already
-	// have a full session skin; everyone else needs a UUID fetch from Mojang.
+	// Drop the cached Mojang fetch so unlock picks up a fresh skin/cape.
+	public static void invalidateLive(ResolvableProfile helmet) {
+		UUID id = id(helmet);
+		if (id != null) {
+			SESSION_SKINS.remove(id);
+			EssentialCapes.invalidate(id);
+		}
+	}
+
+	// Unlocked stands should track the live session, not the packed skull.
+	public static ResolvableProfile liveQuery(ResolvableProfile helmet) {
+		UUID uuid = id(helmet);
+		if (uuid != null) {
+			return ResolvableProfile.createUnresolved(uuid);
+		}
+		return helmet;
+	}
+
+	public static PlayerSkin liveBody(Minecraft client, ResolvableProfile helmet) {
+		UUID uuid = id(helmet);
+		GameProfile gameProfile = helmet == null ? null : helmet.partialProfile();
+
+		PlayerSkin online = liveSkin(client, uuid, gameProfile);
+		if (online != null && online.body() != null) {
+			return online;
+		}
+
+		PlayerSkin fetched = fetchedSessionSkin(client, uuid);
+		if (fetched != null && fetched.body() != null) {
+			return fetched;
+		}
+
+		PlayerSkin session = sessionSkin(client, gameProfile);
+		if (session != null && session.body() != null) {
+			return session;
+		}
+		return null;
+	}
+
+	public static Identifier[] lockedCloak(HeadSkinHolder holder, PlayerSkin packed) {
+		Identifier cape = holder == null ? null : holder.pasheadskins$lockedCape();
+		Identifier elytra = holder == null ? null : holder.pasheadskins$lockedElytra();
+		if (cape == null && elytra == null) {
+			return packedCloak(packed);
+		}
+		if (elytra == null) {
+			elytra = cape;
+		}
+		return new Identifier[] { cape, elytra };
+	}
+
+	public static Identifier[] packedCloak(PlayerSkin packed) {
+		Identifier cape = texturePath(packed, true);
+		Identifier elytra = texturePath(packed, false);
+		if (elytra == null) {
+			elytra = cape;
+		}
+		return new Identifier[] { cape, elytra };
+	}
+
+	// Skull NBT usually has the body skin and no cape. Mojang capes come from a
+	// UUID fetch; Essential ones come from their wardrobe hash if that mod is in.
 	public static Identifier[] capeAndElytra(Minecraft client, ResolvableProfile helmet, GameProfile gameProfile, PlayerSkin packed) {
+		return capeAndElytra(client, helmet, gameProfile, packed, CapeSource.BOTH);
+	}
+
+	public static Identifier[] capeAndElytra(Minecraft client, ResolvableProfile helmet, GameProfile gameProfile, PlayerSkin packed, CapeSource source) {
 		UUID id = id(helmet);
 		if (id == null && gameProfile != null) {
 			id = gameProfile.id();
 		}
+		if (source == null) {
+			source = CapeSource.BOTH;
+		}
 
-		Identifier cape = liveCape(client, id, gameProfile);
-		Identifier elytra = liveElytra(client, id, gameProfile);
+		return switch (source) {
+			case MOJANG -> completeCloak(mojangCloak(client, id, gameProfile, packed, EssentialCapes.present()));
+			case ESSENTIAL -> completeCloak(EssentialCapes.cloak(id));
+			case BOTH -> bothCloak(client, id, gameProfile, packed);
+		};
+	}
+
+	private static Identifier[] bothCloak(Minecraft client, UUID id, GameProfile gameProfile, PlayerSkin packed) {
+		if (!EssentialCapes.present()) {
+			return completeCloak(mojangCloak(client, id, gameProfile, packed, false));
+		}
+
+		Identifier[] mojang = fetchedCloak(client, id);
+		if (mojang[0] != null || mojang[1] != null) {
+			return completeCloak(mojang);
+		}
+		if (mojangFetchDone(id)) {
+			return completeCloak(EssentialCapes.cloak(id));
+		}
+		return completeCloak(null);
+	}
+
+	private static Identifier[] mojangCloak(Minecraft client, UUID id, GameProfile gameProfile, PlayerSkin packed, boolean skipLive) {
+		Identifier cape = null;
+		Identifier elytra = null;
+		if (!skipLive) {
+			cape = liveCape(client, id, gameProfile);
+			elytra = liveElytra(client, id, gameProfile);
+		}
 
 		PlayerSkin fetched = fetchedSessionSkin(client, id);
 		cape = first(cape, texturePath(fetched, true));
 		elytra = first(elytra, texturePath(fetched, false));
 
-		PlayerSkin session = sessionSkin(client, gameProfile);
-		cape = first(cape, texturePath(session, true));
-		elytra = first(elytra, texturePath(session, false));
+		if (!skipLive) {
+			PlayerSkin session = sessionSkin(client, gameProfile);
+			cape = first(cape, texturePath(session, true));
+			elytra = first(elytra, texturePath(session, false));
+		}
 
 		cape = first(cape, texturePath(packed, true));
 		elytra = first(elytra, texturePath(packed, false));
+		return new Identifier[] { cape, elytra };
+	}
 
+	private static Identifier[] fetchedCloak(Minecraft client, UUID id) {
+		PlayerSkin fetched = fetchedSessionSkin(client, id);
+		return new Identifier[] { texturePath(fetched, true), texturePath(fetched, false) };
+	}
+
+	private static boolean mojangFetchDone(UUID id) {
+		if (id == null) {
+			return true;
+		}
+		CompletableFuture<Optional<PlayerSkin>> future = SESSION_SKINS.get(id);
+		return future != null && future.isDone();
+	}
+
+	private static Identifier[] completeCloak(Identifier[] cloak) {
+		if (cloak == null) {
+			return new Identifier[] { null, null };
+		}
+		Identifier cape = cloak.length > 0 ? cloak[0] : null;
+		Identifier elytra = cloak.length > 1 ? cloak[1] : null;
 		if (elytra == null) {
 			elytra = cape;
 		}
@@ -116,7 +243,7 @@ public final class HeadSkinLookup {
 
 		if (client.player instanceof ClientAvatarEntity avatar && samePlayer(id, gameProfile, client.player.getUUID(), client.player.getGameProfile())) {
 			PlayerSkin skin = avatar.getSkin();
-			if (hasCloak(skin)) {
+			if (skin != null && skin.body() != null) {
 				return skin;
 			}
 		}
@@ -125,7 +252,7 @@ public final class HeadSkinLookup {
 			for (var player : client.level.players()) {
 				if (player instanceof ClientAvatarEntity avatar && id.equals(player.getUUID())) {
 					PlayerSkin skin = avatar.getSkin();
-					if (hasCloak(skin)) {
+					if (skin != null && skin.body() != null) {
 						return skin;
 					}
 				}
@@ -135,7 +262,7 @@ public final class HeadSkinLookup {
 		ClientPacketListener connection = client.getConnection();
 		if (connection != null && id != null) {
 			PlayerInfo info = connection.getPlayerInfo(id);
-			if (info != null && hasCloak(info.getSkin())) {
+			if (info != null && info.getSkin() != null && info.getSkin().body() != null) {
 				return info.getSkin();
 			}
 		}
@@ -226,6 +353,9 @@ public final class HeadSkinLookup {
 	}
 
 	private static UUID id(ResolvableProfile profile) {
+		if (profile == null) {
+			return null;
+		}
 		GameProfile partial = profile.partialProfile();
 		if (partial == null || partial.id() == null) {
 			return null;
@@ -243,5 +373,8 @@ public final class HeadSkinLookup {
 			return partial.name();
 		}
 		return profile.name().orElse("");
+	}
+
+	public record FrozenLook(ResolvableProfile profile, Identifier cape, Identifier elytra) {
 	}
 }

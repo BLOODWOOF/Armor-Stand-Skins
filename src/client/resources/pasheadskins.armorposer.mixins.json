@@ -5,7 +5,8 @@
 	"plugin": "pasheadskins.mixin.PasHeadSkinsMixinPlugin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ArmorStandScreenMixin"
+		"ArmorStandScreenMixin",
+		"ArmorStandDataMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

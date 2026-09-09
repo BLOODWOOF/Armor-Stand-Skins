@@ -19,10 +19,7 @@ public class PasHeadSkinsMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-		if (mixinClassName.endsWith("ArmorStandScreenMixin")) {
-			return FabricLoader.getInstance().isModLoaded("armorposer");
-		}
-		return true;
+		return FabricLoader.getInstance().isModLoaded("armorposer");
 	}
 
 	@Override

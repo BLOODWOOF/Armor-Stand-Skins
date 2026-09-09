@@ -42,6 +42,7 @@
 	"suggests": {
 		"armorposer": "*",
 		"skinlayers3d": "*",
-		"waveycapes": "*"
+		"waveycapes": "*",
+		"essential": "*"
 	}
 }

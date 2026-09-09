@@ -23,7 +23,10 @@ public class HeadSkinWorldData extends SavedData {
 		Codec.unboundedMap(UUIDUtil.STRING_CODEC, ResolvableProfile.CODEC)
 			.optionalFieldOf("locked", Map.of())
 			.forGetter(data -> data.locked),
-		UUIDUtil.CODEC_SET.optionalFieldOf("capes", Set.of()).forGetter(data -> data.capes)
+		UUIDUtil.CODEC_SET.optionalFieldOf("capes", Set.of()).forGetter(data -> data.capes),
+		Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT)
+			.optionalFieldOf("capeSources", Map.of())
+			.forGetter(data -> data.capeSources)
 	).apply(instance, HeadSkinWorldData::new));
 
 	public static final SavedDataType<HeadSkinWorldData> TYPE = new SavedDataType<>(
@@ -36,15 +39,17 @@ public class HeadSkinWorldData extends SavedData {
 	private final Set<UUID> disabled;
 	private final Map<UUID, ResolvableProfile> locked;
 	private final Set<UUID> capes;
+	private final Map<UUID, Integer> capeSources;
 
 	public HeadSkinWorldData() {
-		this(Set.of(), Map.of(), Set.of());
+		this(Set.of(), Map.of(), Set.of(), Map.of());
 	}
 
-	public HeadSkinWorldData(Set<UUID> disabled, Map<UUID, ResolvableProfile> locked, Set<UUID> capes) {
+	public HeadSkinWorldData(Set<UUID> disabled, Map<UUID, ResolvableProfile> locked, Set<UUID> capes, Map<UUID, Integer> capeSources) {
 		this.disabled = new HashSet<>(disabled);
 		this.locked = new HashMap<>(locked);
 		this.capes = new HashSet<>(capes);
+		this.capeSources = new HashMap<>(capeSources);
 	}
 
 	public static HeadSkinWorldData get(MinecraftServer server) {
@@ -78,6 +83,14 @@ public class HeadSkinWorldData extends SavedData {
 			this.capes.add(id);
 			this.setDirty();
 		}
+
+		Integer storedSource = this.capeSources.get(id);
+		if (storedSource != null) {
+			holder.pasheadskins$setCapeSource(CapeSource.fromWire(storedSource));
+		} else if (holder.pasheadskins$capeSource() != CapeSource.BOTH) {
+			this.capeSources.put(id, holder.pasheadskins$capeSource().wire());
+			this.setDirty();
+		}
 	}
 
 	public void setDisabled(UUID id, boolean value) {
@@ -109,10 +122,24 @@ public class HeadSkinWorldData extends SavedData {
 		}
 	}
 
+	public void setCapeSource(UUID id, CapeSource source) {
+		if (source == null || source == CapeSource.BOTH) {
+			if (this.capeSources.remove(id) != null) {
+				this.setDirty();
+			}
+			return;
+		}
+		Integer previous = this.capeSources.put(id, source.wire());
+		if (previous == null || previous.intValue() != source.wire()) {
+			this.setDirty();
+		}
+	}
+
 	public void forget(UUID id) {
 		boolean changed = this.disabled.remove(id);
 		changed |= this.locked.remove(id) != null;
 		changed |= this.capes.remove(id);
+		changed |= this.capeSources.remove(id) != null;
 		if (changed) {
 			this.setDirty();
 		}

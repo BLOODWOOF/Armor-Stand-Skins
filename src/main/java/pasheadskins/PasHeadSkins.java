@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import pasheadskins.net.HeadSkinCapePayload;
+import pasheadskins.net.HeadSkinCapeSourcePayload;
 import pasheadskins.net.HeadSkinDisabledPayload;
 import pasheadskins.net.HeadSkinLockPayload;
 
@@ -24,6 +25,8 @@ public class PasHeadSkins implements ModInitializer {
 		PayloadTypeRegistry.clientboundPlay().register(HeadSkinLockPayload.TYPE, HeadSkinLockPayload.STREAM_CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(HeadSkinCapePayload.TYPE, HeadSkinCapePayload.STREAM_CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(HeadSkinCapePayload.TYPE, HeadSkinCapePayload.STREAM_CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(HeadSkinCapeSourcePayload.TYPE, HeadSkinCapeSourcePayload.STREAM_CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(HeadSkinCapeSourcePayload.TYPE, HeadSkinCapeSourcePayload.STREAM_CODEC);
 
 		ServerPlayNetworking.registerGlobalReceiver(HeadSkinDisabledPayload.TYPE, (payload, context) -> {
 			context.server().execute(() -> handleDisabled(context.player(), payload));
@@ -33,6 +36,9 @@ public class PasHeadSkins implements ModInitializer {
 		});
 		ServerPlayNetworking.registerGlobalReceiver(HeadSkinCapePayload.TYPE, (payload, context) -> {
 			context.server().execute(() -> handleCape(context.player(), payload));
+		});
+		ServerPlayNetworking.registerGlobalReceiver(HeadSkinCapeSourcePayload.TYPE, (payload, context) -> {
+			context.server().execute(() -> handleCapeSource(context.player(), payload));
 		});
 
 		EntityTrackingEvents.START_TRACKING.register((entity, player) -> {
@@ -100,6 +106,20 @@ public class PasHeadSkins implements ModInitializer {
 		}
 	}
 
+	private static void handleCapeSource(ServerPlayer player, HeadSkinCapeSourcePayload payload) {
+		ArmorStand stand = standFrom(player, payload.entityId());
+		if (stand == null) {
+			return;
+		}
+
+		CapeSource source = CapeSource.fromWire(payload.source());
+		HeadSkinFlags.setCapeSource(stand, source);
+		HeadSkinWorldData.get(player.level().getServer()).setCapeSource(stand.getUUID(), source);
+		for (ServerPlayer tracker : PlayerLookup.tracking(stand)) {
+			syncCapeSource(tracker, stand);
+		}
+	}
+
 	private static ArmorStand standFrom(ServerPlayer player, int entityId) {
 		Entity entity = player.level().getEntity(entityId);
 		if (!(entity instanceof ArmorStand stand)) {
@@ -115,6 +135,7 @@ public class PasHeadSkins implements ModInitializer {
 		syncDisabled(player, stand);
 		syncLock(player, stand);
 		syncCape(player, stand);
+		syncCapeSource(player, stand);
 	}
 
 	static void syncDisabled(ServerPlayer player, ArmorStand stand) {
@@ -131,5 +152,9 @@ public class PasHeadSkins implements ModInitializer {
 
 	static void syncCape(ServerPlayer player, ArmorStand stand) {
 		ServerPlayNetworking.send(player, new HeadSkinCapePayload(stand.getId(), HeadSkinFlags.isCapeEnabled(stand)));
+	}
+
+	static void syncCapeSource(ServerPlayer player, ArmorStand stand) {
+		ServerPlayNetworking.send(player, new HeadSkinCapeSourcePayload(stand.getId(), HeadSkinFlags.capeSource(stand).wire()));
 	}
 }

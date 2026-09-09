@@ -1,7 +1,7 @@
 package pasheadskins.mixin;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.object.armorstand.ArmorStandArmorModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -16,6 +16,7 @@ import net.minecraft.core.ClientAsset;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.PlayerModelType;
+import net.minecraft.world.entity.player.PlayerSkin;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ResolvableProfile;
 import org.spongepowered.asm.mixin.Final;
@@ -27,12 +28,14 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import pasheadskins.EquippedHeadHider;
+import pasheadskins.HeadSkinControls;
 import pasheadskins.HeadSkinFlags;
+import pasheadskins.HeadSkinHolder;
 import pasheadskins.HeadSkinLookup;
 import pasheadskins.HeadStandCapeLayer;
 import pasheadskins.HeadStandModel;
 import pasheadskins.HeadStandRender;
-import pasheadskins.net.HeadSkinLockPayload;
+import pasheadskins.StandSlotFlags;
 
 @Mixin(ArmorStandRenderer.class)
 public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<ArmorStand, ArmorStandRenderState, ArmorStandArmorModel> {
@@ -73,6 +76,10 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 
 		head.pasheadskins$clearHeadSkin();
 		try {
+			if (!HeadSkinFlags.packetChannelOpen()) {
+				StandSlotFlags.applyToHolder(stand);
+			}
+
 			if (HeadSkinFlags.isDisabled(stand) || state.isMarker) {
 				return;
 			}
@@ -82,17 +89,21 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 				return;
 			}
 
+			boolean locked = HeadSkinFlags.isLocked(stand);
 			ResolvableProfile profile = helmet;
-			if (HeadSkinFlags.isLocked(stand)) {
-				ResolvableProfile locked = HeadSkinFlags.lockedProfile(stand);
-				if (locked != null && HeadSkinLookup.sameIdentity(helmet, locked)) {
-					profile = locked;
+			if (locked) {
+				ResolvableProfile frozen = HeadSkinFlags.lockedProfile(stand);
+				if (frozen != null && HeadSkinLookup.sameIdentity(helmet, frozen)) {
+					profile = frozen;
+				} else if (StandSlotFlags.lockOn(stand)) {
+					profile = helmet;
 				} else {
-					HeadSkinFlags.setLocked(stand, false, null);
-					if (ClientPlayNetworking.canSend(HeadSkinLockPayload.TYPE)) {
-						ClientPlayNetworking.send(HeadSkinLockPayload.of(stand.getId(), false, null));
-					}
+					HeadSkinControls.setLocked(stand, false);
+					locked = false;
+					profile = HeadSkinLookup.liveQuery(helmet);
 				}
+			} else {
+				profile = HeadSkinLookup.liveQuery(helmet);
 			}
 
 			Minecraft client = Minecraft.getInstance();
@@ -100,16 +111,41 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 				return;
 			}
 
-			var info = client.playerSkinRenderCache().getOrDefault(profile);
-			if (info == null || info.playerSkin() == null || info.playerSkin().body() == null) {
-				return;
+			Identifier texture = null;
+			boolean slim = false;
+			PlayerSkin packed = null;
+			GameProfile gameProfile = null;
+
+			if (!locked) {
+				PlayerSkin live = HeadSkinLookup.liveBody(client, helmet);
+				if (live != null && live.body() != null) {
+					texture = live.body().texturePath();
+					slim = live.model() == PlayerModelType.SLIM;
+					packed = live;
+					gameProfile = helmet.partialProfile();
+				}
 			}
 
-			Identifier texture = info.playerSkin().body().texturePath();
-			boolean slim = info.playerSkin().model() == PlayerModelType.SLIM;
+			if (texture == null) {
+				var info = client.playerSkinRenderCache().getOrDefault(profile);
+				if (info == null || info.playerSkin() == null || info.playerSkin().body() == null) {
+					return;
+				}
+				texture = info.playerSkin().body().texturePath();
+				slim = info.playerSkin().model() == PlayerModelType.SLIM;
+				packed = info.playerSkin();
+				gameProfile = info.gameProfile();
+			}
+
 			head.pasheadskins$setHeadSkin(texture, slim);
 			if (HeadSkinFlags.isCapeEnabled(stand)) {
-				Identifier[] cloak = HeadSkinLookup.capeAndElytra(client, profile, info.gameProfile(), info.playerSkin());
+				Identifier[] cloak;
+				if (locked) {
+					HeadSkinHolder holder = stand instanceof HeadSkinHolder h ? h : null;
+					cloak = HeadSkinLookup.lockedCloak(holder, packed);
+				} else {
+					cloak = HeadSkinLookup.capeAndElytra(client, helmet, gameProfile, packed, HeadSkinFlags.capeSource(stand));
+				}
 				head.pasheadskins$setCapeTextures(cloak[0], cloak[1]);
 			}
 			EquippedHeadHider.hideOnState(state);

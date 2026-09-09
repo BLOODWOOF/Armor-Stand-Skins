@@ -1,17 +1,23 @@
 package pasheadskins.mixin;
 
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.level.storage.ValueInput;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import pasheadskins.CapeSource;
 import pasheadskins.HeadSkinHolder;
 
 @Mixin(ArmorStand.class)
 public class ArmorStandMixin implements HeadSkinHolder {
+	@Shadow
+	private int disabledSlots;
+
 	@Unique
 	private boolean pasheadskins$disabled;
 
@@ -22,7 +28,16 @@ public class ArmorStandMixin implements HeadSkinHolder {
 	private ResolvableProfile pasheadskins$lockedProfile;
 
 	@Unique
+	private Identifier pasheadskins$lockedCape;
+
+	@Unique
+	private Identifier pasheadskins$lockedElytra;
+
+	@Unique
 	private boolean pasheadskins$capeEnabled;
+
+	@Unique
+	private CapeSource pasheadskins$capeSource = CapeSource.BOTH;
 
 	@Override
 	public boolean pasheadskins$isDisabled() {
@@ -52,7 +67,25 @@ public class ArmorStandMixin implements HeadSkinHolder {
 		} else {
 			this.pasheadskins$locked = false;
 			this.pasheadskins$lockedProfile = null;
+			this.pasheadskins$lockedCape = null;
+			this.pasheadskins$lockedElytra = null;
 		}
+	}
+
+	@Override
+	public Identifier pasheadskins$lockedCape() {
+		return this.pasheadskins$lockedCape;
+	}
+
+	@Override
+	public Identifier pasheadskins$lockedElytra() {
+		return this.pasheadskins$lockedElytra;
+	}
+
+	@Override
+	public void pasheadskins$setLockedCloak(Identifier cape, Identifier elytra) {
+		this.pasheadskins$lockedCape = cape;
+		this.pasheadskins$lockedElytra = elytra;
 	}
 
 	@Override
@@ -63,6 +96,26 @@ public class ArmorStandMixin implements HeadSkinHolder {
 	@Override
 	public void pasheadskins$setCapeEnabled(boolean enabled) {
 		this.pasheadskins$capeEnabled = enabled;
+	}
+
+	@Override
+	public CapeSource pasheadskins$capeSource() {
+		return this.pasheadskins$capeSource == null ? CapeSource.BOTH : this.pasheadskins$capeSource;
+	}
+
+	@Override
+	public void pasheadskins$setCapeSource(CapeSource source) {
+		this.pasheadskins$capeSource = source == null ? CapeSource.BOTH : source;
+	}
+
+	@Override
+	public int pasheadskins$disabledSlots() {
+		return this.disabledSlots;
+	}
+
+	@Override
+	public void pasheadskins$setDisabledSlots(int slots) {
+		this.disabledSlots = slots;
 	}
 
 	@Inject(method = "readAdditionalSaveData", at = @At("TAIL"))

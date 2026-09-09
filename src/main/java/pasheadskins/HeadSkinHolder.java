@@ -1,5 +1,6 @@
 package pasheadskins;
 
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.component.ResolvableProfile;
 
 public interface HeadSkinHolder {
@@ -13,7 +14,21 @@ public interface HeadSkinHolder {
 
 	void pasheadskins$setLocked(boolean locked, ResolvableProfile profile);
 
+	Identifier pasheadskins$lockedCape();
+
+	Identifier pasheadskins$lockedElytra();
+
+	void pasheadskins$setLockedCloak(Identifier cape, Identifier elytra);
+
 	boolean pasheadskins$isCapeEnabled();
 
 	void pasheadskins$setCapeEnabled(boolean enabled);
+
+	CapeSource pasheadskins$capeSource();
+
+	void pasheadskins$setCapeSource(CapeSource source);
+
+	int pasheadskins$disabledSlots();
+
+	void pasheadskins$setDisabledSlots(int slots);
 }

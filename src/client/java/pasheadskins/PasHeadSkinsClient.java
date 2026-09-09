@@ -12,6 +12,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.component.ResolvableProfile;
 import pasheadskins.net.HeadSkinCapePayload;
+import pasheadskins.net.HeadSkinCapeSourcePayload;
 import pasheadskins.net.HeadSkinDisabledPayload;
 import pasheadskins.net.HeadSkinLockPayload;
 
@@ -21,6 +22,8 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 		DisabledHeadSkins.load();
 		LockedHeadSkins.load();
 		EnabledCapes.load();
+		CapeSources.load();
+		HeadSkinFlags.setPacketChannel(() -> ClientPlayNetworking.canSend(HeadSkinDisabledPayload.TYPE));
 		HeadSkinFlags.bind(new HeadSkinFlags.Lookup() {
 			@Override
 			public boolean isDisabled(ArmorStand stand) {
@@ -56,6 +59,16 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			public void setCapeEnabled(ArmorStand stand, boolean enabled) {
 				EnabledCapes.setEnabled(stand, enabled);
 			}
+
+			@Override
+			public CapeSource capeSource(ArmorStand stand) {
+				return CapeSources.get(stand);
+			}
+
+			@Override
+			public void setCapeSource(ArmorStand stand, CapeSource source) {
+				CapeSources.set(stand, source);
+			}
 		});
 
 		ClientPlayNetworking.registerGlobalReceiver(HeadSkinDisabledPayload.TYPE, (payload, context) -> {
@@ -71,6 +84,12 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 		ClientPlayNetworking.registerGlobalReceiver(HeadSkinCapePayload.TYPE, (payload, context) -> {
 			context.client().execute(() -> EquippedHeadHider.applyCapePacket(payload.entityId(), payload.enabled()));
 		});
+		ClientPlayNetworking.registerGlobalReceiver(HeadSkinCapeSourcePayload.TYPE, (payload, context) -> {
+			context.client().execute(() -> EquippedHeadHider.applyCapeSourcePacket(
+				payload.entityId(),
+				CapeSource.fromWire(payload.source())
+			));
+		});
 
 		ClientEntityEvents.ENTITY_LOAD.register((entity, world) -> {
 			if (entity instanceof ArmorStand stand) {
@@ -82,6 +101,7 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			DisabledHeadSkins.save();
 			LockedHeadSkins.save();
 			EnabledCapes.save();
+			CapeSources.save();
 		});
 
 		if (!FabricLoader.getInstance().isModLoaded("armorposer")) {

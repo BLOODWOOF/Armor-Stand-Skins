@@ -64,9 +64,18 @@ public class HeadSkinStandScreen extends Screen {
 				HeadSkinControls.setCapeEnabled(this.stand, value);
 			});
 
+		CycleButton<CapeSource> source = CycleButton.builder(CapeSource::label, HeadSkinFlags.capeSource(this.stand))
+			.withValues(CapeSource.MOJANG, CapeSource.ESSENTIAL, CapeSource.BOTH)
+			.displayOnlyValue()
+			.withTooltip(value -> Tooltip.create(Component.translatable("pasheadskins.gui.tooltip.cape_source")))
+			.create(buttonX, 20 + 3 * 22, 72, height, Component.translatable("pasheadskins.gui.label.cape_source"), (button, value) -> {
+				HeadSkinControls.setCapeSource(this.stand, value);
+			});
+
 		this.addRenderableWidget(skin);
 		this.addRenderableWidget(lock);
 		this.addRenderableWidget(cape);
+		this.addRenderableWidget(source);
 		this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> this.onClose())
 			.bounds(this.width / 2 - 50, this.height / 4 + 120, 100, 20)
 			.build());
@@ -79,5 +88,6 @@ public class HeadSkinStandScreen extends Screen {
 		graphics.text(this.font, I18n.get("pasheadskins.gui.label.head_skin"), x, 20 + 0 * 22 + 10 - 9 / 2, WHITE, true);
 		graphics.text(this.font, I18n.get("pasheadskins.gui.label.lock_skin"), x, 20 + 1 * 22 + 10 - 9 / 2, WHITE, true);
 		graphics.text(this.font, I18n.get("pasheadskins.gui.label.cape"), x, 20 + 2 * 22 + 10 - 9 / 2, WHITE, true);
+		graphics.text(this.font, I18n.get("pasheadskins.gui.label.cape_source"), x, 20 + 3 * 22 + 10 - 9 / 2, WHITE, true);
 	}
 }
