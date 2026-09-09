@@ -4,8 +4,14 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.component.ResolvableProfile;
+import pasheadskins.net.HeadSkinCapePayload;
 import pasheadskins.net.HeadSkinDisabledPayload;
 import pasheadskins.net.HeadSkinLockPayload;
 
@@ -14,6 +20,7 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		DisabledHeadSkins.load();
 		LockedHeadSkins.load();
+		EnabledCapes.load();
 		HeadSkinFlags.bind(new HeadSkinFlags.Lookup() {
 			@Override
 			public boolean isDisabled(ArmorStand stand) {
@@ -39,6 +46,16 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			public void setLocked(ArmorStand stand, boolean locked, ResolvableProfile profile) {
 				LockedHeadSkins.setLocked(stand, locked, profile);
 			}
+
+			@Override
+			public boolean isCapeEnabled(ArmorStand stand) {
+				return EnabledCapes.isEnabled(stand);
+			}
+
+			@Override
+			public void setCapeEnabled(ArmorStand stand, boolean enabled) {
+				EnabledCapes.setEnabled(stand, enabled);
+			}
 		});
 
 		ClientPlayNetworking.registerGlobalReceiver(HeadSkinDisabledPayload.TYPE, (payload, context) -> {
@@ -51,6 +68,9 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 				payload.profile().orElse(null)
 			));
 		});
+		ClientPlayNetworking.registerGlobalReceiver(HeadSkinCapePayload.TYPE, (payload, context) -> {
+			context.client().execute(() -> EquippedHeadHider.applyCapePacket(payload.entityId(), payload.enabled()));
+		});
 
 		ClientEntityEvents.ENTITY_LOAD.register((entity, world) -> {
 			if (entity instanceof ArmorStand stand) {
@@ -61,6 +81,19 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			DisabledHeadSkins.save();
 			LockedHeadSkins.save();
+			EnabledCapes.save();
 		});
+
+		if (!FabricLoader.getInstance().isModLoaded("armorposer")) {
+			UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+				if (!(entity instanceof ArmorStand stand) || !player.isShiftKeyDown() || hand != InteractionHand.MAIN_HAND) {
+					return InteractionResult.PASS;
+				}
+				if (world.isClientSide()) {
+					Minecraft.getInstance().setScreenAndShow(new HeadSkinStandScreen(stand));
+				}
+				return InteractionResult.SUCCESS;
+			});
+		}
 	}
 }

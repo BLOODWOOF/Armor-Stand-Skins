@@ -3,7 +3,7 @@
 	"id": "pasheadskins",
 	"version": "${version}",
 	"name": "Armor Stand Skins",
-	"description": "Armor stands wearing a player head render as that player. Optional Armor Poser toggle to turn the skin off per stand.",
+	"description": "Armor stands wearing a player head render as that player. Armor Poser is recommended for posing; without it, sneak-use a stand to open the skin toggles.",
 	"authors": [
 		"BLOODWOLF"
 	],

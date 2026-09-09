@@ -55,6 +55,22 @@ public final class HeadSkinFlags {
 		}
 	}
 
+	public static boolean isCapeEnabled(ArmorStand stand) {
+		if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isCapeEnabled()) {
+			return true;
+		}
+		return lookup != null && lookup.isCapeEnabled(stand);
+	}
+
+	public static void setCapeEnabled(ArmorStand stand, boolean enabled) {
+		if (stand instanceof HeadSkinHolder holder) {
+			holder.pasheadskins$setCapeEnabled(enabled);
+		}
+		if (lookup != null) {
+			lookup.setCapeEnabled(stand, enabled);
+		}
+	}
+
 	public interface Lookup {
 		boolean isDisabled(ArmorStand stand);
 
@@ -65,5 +81,9 @@ public final class HeadSkinFlags {
 		ResolvableProfile lockedProfile(ArmorStand stand);
 
 		void setLocked(ArmorStand stand, boolean locked, ResolvableProfile profile);
+
+		boolean isCapeEnabled(ArmorStand stand);
+
+		void setCapeEnabled(ArmorStand stand, boolean enabled);
 	}
 }

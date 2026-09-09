@@ -12,4 +12,8 @@ public interface HeadSkinHolder {
 	ResolvableProfile pasheadskins$lockedProfile();
 
 	void pasheadskins$setLocked(boolean locked, ResolvableProfile profile);
+
+	boolean pasheadskins$isCapeEnabled();
+
+	void pasheadskins$setCapeEnabled(boolean enabled);
 }

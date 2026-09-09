@@ -5,7 +5,8 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"ArmorStandRenderStateMixin",
-		"ArmorStandRendererMixin"
+		"ArmorStandRendererMixin",
+		"WingsLayerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

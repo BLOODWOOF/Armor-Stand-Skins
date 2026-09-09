@@ -21,6 +21,9 @@ public class ArmorStandMixin implements HeadSkinHolder {
 	@Unique
 	private ResolvableProfile pasheadskins$lockedProfile;
 
+	@Unique
+	private boolean pasheadskins$capeEnabled;
+
 	@Override
 	public boolean pasheadskins$isDisabled() {
 		return this.pasheadskins$disabled;
@@ -50,6 +53,16 @@ public class ArmorStandMixin implements HeadSkinHolder {
 			this.pasheadskins$locked = false;
 			this.pasheadskins$lockedProfile = null;
 		}
+	}
+
+	@Override
+	public boolean pasheadskins$isCapeEnabled() {
+		return this.pasheadskins$capeEnabled;
+	}
+
+	@Override
+	public void pasheadskins$setCapeEnabled(boolean enabled) {
+		this.pasheadskins$capeEnabled = enabled;
 	}
 
 	@Inject(method = "readAdditionalSaveData", at = @At("TAIL"))

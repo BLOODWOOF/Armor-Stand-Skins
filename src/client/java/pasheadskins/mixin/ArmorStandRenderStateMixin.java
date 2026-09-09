@@ -12,6 +12,12 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 	private Identifier pasheadskins$texture;
 
 	@Unique
+	private Identifier pasheadskins$capeTexture;
+
+	@Unique
+	private Identifier pasheadskins$elytraTexture;
+
+	@Unique
 	private boolean pasheadskins$slim;
 
 	@Unique
@@ -25,8 +31,16 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 	}
 
 	@Override
+	public void pasheadskins$setCapeTextures(Identifier cape, Identifier elytra) {
+		this.pasheadskins$capeTexture = cape;
+		this.pasheadskins$elytraTexture = elytra;
+	}
+
+	@Override
 	public void pasheadskins$clearHeadSkin() {
 		this.pasheadskins$texture = null;
+		this.pasheadskins$capeTexture = null;
+		this.pasheadskins$elytraTexture = null;
 		this.pasheadskins$slim = false;
 		this.pasheadskins$usingHeadSkin = false;
 	}
@@ -44,5 +58,15 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 	@Override
 	public Identifier pasheadskins$texture() {
 		return this.pasheadskins$texture;
+	}
+
+	@Override
+	public Identifier pasheadskins$capeTexture() {
+		return this.pasheadskins$capeTexture;
+	}
+
+	@Override
+	public Identifier pasheadskins$elytraTexture() {
+		return this.pasheadskins$elytraTexture;
 	}
 }

@@ -22,7 +22,8 @@ public class HeadSkinWorldData extends SavedData {
 		UUIDUtil.CODEC_SET.optionalFieldOf("disabled", Set.of()).forGetter(data -> data.disabled),
 		Codec.unboundedMap(UUIDUtil.STRING_CODEC, ResolvableProfile.CODEC)
 			.optionalFieldOf("locked", Map.of())
-			.forGetter(data -> data.locked)
+			.forGetter(data -> data.locked),
+		UUIDUtil.CODEC_SET.optionalFieldOf("capes", Set.of()).forGetter(data -> data.capes)
 	).apply(instance, HeadSkinWorldData::new));
 
 	public static final SavedDataType<HeadSkinWorldData> TYPE = new SavedDataType<>(
@@ -34,14 +35,16 @@ public class HeadSkinWorldData extends SavedData {
 
 	private final Set<UUID> disabled;
 	private final Map<UUID, ResolvableProfile> locked;
+	private final Set<UUID> capes;
 
 	public HeadSkinWorldData() {
-		this(Set.of(), Map.of());
+		this(Set.of(), Map.of(), Set.of());
 	}
 
-	public HeadSkinWorldData(Set<UUID> disabled, Map<UUID, ResolvableProfile> locked) {
+	public HeadSkinWorldData(Set<UUID> disabled, Map<UUID, ResolvableProfile> locked, Set<UUID> capes) {
 		this.disabled = new HashSet<>(disabled);
 		this.locked = new HashMap<>(locked);
+		this.capes = new HashSet<>(capes);
 	}
 
 	public static HeadSkinWorldData get(MinecraftServer server) {
@@ -68,6 +71,13 @@ public class HeadSkinWorldData extends SavedData {
 			this.locked.put(id, holder.pasheadskins$lockedProfile());
 			this.setDirty();
 		}
+
+		if (this.capes.contains(id)) {
+			holder.pasheadskins$setCapeEnabled(true);
+		} else if (holder.pasheadskins$isCapeEnabled()) {
+			this.capes.add(id);
+			this.setDirty();
+		}
 	}
 
 	public void setDisabled(UUID id, boolean value) {
@@ -89,9 +99,20 @@ public class HeadSkinWorldData extends SavedData {
 		}
 	}
 
+	public void setCapeEnabled(UUID id, boolean enabled) {
+		if (enabled) {
+			if (this.capes.add(id)) {
+				this.setDirty();
+			}
+		} else if (this.capes.remove(id)) {
+			this.setDirty();
+		}
+	}
+
 	public void forget(UUID id) {
 		boolean changed = this.disabled.remove(id);
 		changed |= this.locked.remove(id) != null;
+		changed |= this.capes.remove(id);
 		if (changed) {
 			this.setDirty();
 		}

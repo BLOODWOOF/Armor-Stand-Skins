@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.core.ClientAsset;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.PlayerModelType;
@@ -28,6 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import pasheadskins.EquippedHeadHider;
 import pasheadskins.HeadSkinFlags;
 import pasheadskins.HeadSkinLookup;
+import pasheadskins.HeadStandCapeLayer;
 import pasheadskins.HeadStandModel;
 import pasheadskins.HeadStandRender;
 import pasheadskins.net.HeadSkinLockPayload;
@@ -53,6 +55,11 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 
 	public ArmorStandRendererMixin(EntityRendererProvider.Context context, ArmorStandArmorModel model, float shadowRadius) {
 		super(context, model, shadowRadius);
+	}
+
+	@Inject(method = "<init>", at = @At("RETURN"))
+	private void pasheadskins$addCapeLayer(EntityRendererProvider.Context context, CallbackInfo ci) {
+		this.addLayer(new HeadStandCapeLayer((ArmorStandRenderer) (Object) this, context));
 	}
 
 	@Inject(
@@ -101,6 +108,11 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 			Identifier texture = info.playerSkin().body().texturePath();
 			boolean slim = info.playerSkin().model() == PlayerModelType.SLIM;
 			head.pasheadskins$setHeadSkin(texture, slim);
+			if (HeadSkinFlags.isCapeEnabled(stand)) {
+				Identifier cape = texturePath(info.playerSkin().cape());
+				Identifier elytra = texturePath(info.playerSkin().elytra());
+				head.pasheadskins$setCapeTextures(cape, elytra != null ? elytra : cape);
+			}
 			EquippedHeadHider.hideOnState(state);
 			state.isBaby = false;
 			if (!state.showArms) {
@@ -185,6 +197,11 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 		}
 
 		cir.setReturnValue(RenderTypes.entityTranslucent(texture, false));
+	}
+
+	@Unique
+	private static Identifier texturePath(ClientAsset.Texture texture) {
+		return texture == null ? null : texture.texturePath();
 	}
 
 	@Unique

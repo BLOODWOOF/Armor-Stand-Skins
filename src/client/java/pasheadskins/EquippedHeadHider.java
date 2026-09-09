@@ -13,6 +13,7 @@ import java.util.Map;
 public final class EquippedHeadHider {
 	private static final Map<Integer, Boolean> pendingDisabled = new HashMap<>();
 	private static final Map<Integer, HeadSkinLockPayloadState> pendingLock = new HashMap<>();
+	private static final Map<Integer, Boolean> pendingCape = new HashMap<>();
 
 	private EquippedHeadHider() {
 	}
@@ -60,6 +61,23 @@ public final class EquippedHeadHider {
 		pendingLock.put(entityId, new HeadSkinLockPayloadState(locked, profile));
 	}
 
+	public static void applyCapePacket(int entityId, boolean enabled) {
+		Minecraft client = Minecraft.getInstance();
+		if (client.level == null) {
+			pendingCape.put(entityId, enabled);
+			return;
+		}
+
+		Entity entity = client.level.getEntity(entityId);
+		if (entity instanceof ArmorStand stand) {
+			HeadSkinFlags.setCapeEnabled(stand, enabled);
+			pendingCape.remove(entityId);
+			return;
+		}
+
+		pendingCape.put(entityId, enabled);
+	}
+
 	public static void applyLoadedStand(ArmorStand stand) {
 		Boolean disabled = pendingDisabled.remove(stand.getId());
 		if (disabled != null) {
@@ -73,6 +91,13 @@ public final class EquippedHeadHider {
 			HeadSkinFlags.setLocked(stand, lock.locked(), lock.profile());
 		} else if (LockedHeadSkins.isLocked(stand) && stand instanceof HeadSkinHolder holder) {
 			holder.pasheadskins$setLocked(true, LockedHeadSkins.lockedProfile(stand));
+		}
+
+		Boolean cape = pendingCape.remove(stand.getId());
+		if (cape != null) {
+			HeadSkinFlags.setCapeEnabled(stand, cape);
+		} else if (EnabledCapes.isEnabled(stand) && stand instanceof HeadSkinHolder holder) {
+			holder.pasheadskins$setCapeEnabled(true);
 		}
 	}
 

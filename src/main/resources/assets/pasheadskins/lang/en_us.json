@@ -1,8 +1,11 @@
 {
+	"pasheadskins.gui.title": "Armor Stand Skins",
 	"pasheadskins.gui.label.head_skin": "Head Skin",
 	"pasheadskins.gui.label.head_skin.short": "Skin",
 	"pasheadskins.gui.tooltip.head_skin": "Render this stand as the player from its helmet",
 	"pasheadskins.gui.label.lock_skin": "Lock Skin",
 	"pasheadskins.gui.label.lock_skin.short": "Lock",
-	"pasheadskins.gui.tooltip.lock_skin": "Keep the current look after the player changes skins. A different player head unlocks it. Wait until the skin has loaded before locking."
+	"pasheadskins.gui.tooltip.lock_skin": "Keep the current look after the player changes skins. A different player head unlocks it. Wait until the skin has loaded before locking.",
+	"pasheadskins.gui.label.cape": "Cape",
+	"pasheadskins.gui.tooltip.cape": "Show this player's cape. Off unless you turn it on. An elytra hides the cape and uses the cape texture only while this is on."
 }
