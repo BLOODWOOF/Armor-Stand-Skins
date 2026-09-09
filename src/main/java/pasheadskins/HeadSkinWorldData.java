@@ -91,6 +91,8 @@ public class HeadSkinWorldData extends SavedData {
 			this.capeSources.put(id, holder.pasheadskins$capeSource().wire());
 			this.setDirty();
 		}
+
+		StandSlotFlags.writeOntoStand(stand);
 	}
 
 	public void setDisabled(UUID id, boolean value) {

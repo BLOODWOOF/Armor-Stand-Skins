@@ -67,19 +67,19 @@ public final class HeadSkinControls {
 	}
 
 	private static void push(ArmorStand stand, Runnable sendOurPacket) {
-		if (ClientPlayNetworking.canSend(HeadSkinDisabledPayload.TYPE)) {
-			sendOurPacket.run();
-			return;
-		}
-		if (FabricLoader.getInstance().isModLoaded("armorposer")) {
-			PoserStandSync.trySend(stand);
-		}
+		pushAll(stand, sendOurPacket);
 	}
 
 	private static void pushCapeSource(ArmorStand stand, Runnable sendOurPacket) {
-		if (ClientPlayNetworking.canSend(HeadSkinCapeSourcePayload.TYPE)) {
+		pushAll(stand, sendOurPacket);
+	}
+
+	// Send every channel we have. Missed packets used to stick forever if we
+	// treated our custom packet as the only copy.
+	private static void pushAll(ArmorStand stand, Runnable sendOurPacket) {
+		StandSlotFlags.writeOntoStand(stand);
+		if (ClientPlayNetworking.canSend(HeadSkinDisabledPayload.TYPE)) {
 			sendOurPacket.run();
-			return;
 		}
 		if (FabricLoader.getInstance().isModLoaded("armorposer")) {
 			PoserStandSync.trySend(stand);

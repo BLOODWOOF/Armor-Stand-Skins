@@ -78,11 +78,9 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 
 		head.pasheadskins$clearHeadSkin();
 		try {
-			if (!HeadSkinFlags.packetChannelOpen()) {
-				StandSlotFlags.applyToHolder(stand);
-			}
+			StandSlotFlags.applyToHolder(stand);
 
-			if (HeadSkinFlags.isDisabled(stand) || state.isMarker) {
+			if (HeadSkinFlags.isDisabled(stand) || state.isMarker || state.isInvisible) {
 				return;
 			}
 

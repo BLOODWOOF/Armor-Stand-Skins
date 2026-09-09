@@ -30,12 +30,6 @@ public final class HeadSkinFlags {
 	}
 
 	public static boolean isDisabled(ArmorStand stand) {
-		if (packetChannelOpen()) {
-			if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isDisabled()) {
-				return true;
-			}
-			return lookup != null && lookup.isDisabled(stand);
-		}
 		if (StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.headOff(stand);
 		}
@@ -56,15 +50,10 @@ public final class HeadSkinFlags {
 		if (persist && lookup != null) {
 			lookup.setDisabled(stand, disabled);
 		}
+		StandSlotFlags.writeOntoStand(stand);
 	}
 
 	public static boolean isLocked(ArmorStand stand) {
-		if (packetChannelOpen()) {
-			if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isLocked()) {
-				return true;
-			}
-			return lookup != null && lookup.isLocked(stand);
-		}
 		if (StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.lockOn(stand);
 		}
@@ -75,12 +64,6 @@ public final class HeadSkinFlags {
 	}
 
 	public static ResolvableProfile lockedProfile(ArmorStand stand) {
-		if (packetChannelOpen()) {
-			if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isLocked()) {
-				return holder.pasheadskins$lockedProfile();
-			}
-			return lookup == null ? null : lookup.lockedProfile(stand);
-		}
 		if (StandSlotFlags.hasRecord(stand) && StandSlotFlags.lockOn(stand)) {
 			if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isLocked()) {
 				return holder.pasheadskins$lockedProfile();
@@ -104,15 +87,10 @@ public final class HeadSkinFlags {
 		if (persist && lookup != null) {
 			lookup.setLocked(stand, locked, profile);
 		}
+		StandSlotFlags.writeOntoStand(stand);
 	}
 
 	public static boolean isCapeEnabled(ArmorStand stand) {
-		if (packetChannelOpen()) {
-			if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isCapeEnabled()) {
-				return true;
-			}
-			return lookup != null && lookup.isCapeEnabled(stand);
-		}
 		if (StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.capeOn(stand);
 		}
@@ -133,15 +111,10 @@ public final class HeadSkinFlags {
 		if (persist && lookup != null) {
 			lookup.setCapeEnabled(stand, enabled);
 		}
+		StandSlotFlags.writeOntoStand(stand);
 	}
 
 	public static CapeSource capeSource(ArmorStand stand) {
-		if (packetChannelOpen()) {
-			if (stand instanceof HeadSkinHolder holder) {
-				return holder.pasheadskins$capeSource();
-			}
-			return lookup == null ? CapeSource.BOTH : lookup.capeSource(stand);
-		}
 		if (StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.capeSource(stand);
 		}
@@ -163,6 +136,7 @@ public final class HeadSkinFlags {
 		if (persist && lookup != null) {
 			lookup.setCapeSource(stand, next);
 		}
+		StandSlotFlags.writeOntoStand(stand);
 	}
 
 	public static ResolvableProfile helmetProfile(ArmorStand stand) {

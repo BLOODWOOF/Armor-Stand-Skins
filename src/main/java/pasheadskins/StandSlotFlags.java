@@ -25,7 +25,7 @@ public final class StandSlotFlags {
 	private static final String POSE_KEY = "Pose";
 	private static final float STEP = 0.01F;
 
-	private static int remembered;
+	private static final ThreadLocal<Integer> remembered = ThreadLocal.withInitial(() -> 0);
 
 	private StandSlotFlags() {
 	}
@@ -51,10 +51,16 @@ public final class StandSlotFlags {
 	}
 
 	public static int flagsOf(ArmorStand stand) {
+		// Pose Z actually tracker-syncs. DisabledSlots often stays local, so
+		// remote clients have to trust the pose copy first.
+		int fromPose = flagsFromPoseZ(stand.getHeadPose().z());
+		if ((fromPose & PRESENT) != 0) {
+			return fromPose;
+		}
 		if (stand instanceof HeadSkinHolder holder && (holder.pasheadskins$disabledSlots() & PRESENT) != 0) {
 			return holder.pasheadskins$disabledSlots() & MASK;
 		}
-		return flagsFromPoseZ(stand.getHeadPose().z());
+		return 0;
 	}
 
 	public static int packFromHolder(ArmorStand stand) {
@@ -101,32 +107,38 @@ public final class StandSlotFlags {
 			return;
 		}
 		holder.pasheadskins$setDisabledSlots(merge(holder.pasheadskins$disabledSlots(), flags));
-		remembered = flags;
+		stand.setHeadPose(encodeHead(stand.getHeadPose(), flags));
+		remembered.set(flags);
 	}
 
 	public static void remember(ArmorStand stand) {
-		remembered = packFromHolder(stand);
+		remembered.set(packFromHolder(stand));
 	}
 
 	public static void keepInTag(CompoundTag tag) {
-		if (tag == null || remembered == 0) {
+		int flags = remembered.get();
+		if (tag == null || flags == 0) {
 			return;
 		}
 		if (tag.contains(SLOTS_KEY)) {
-			tag.putInt(SLOTS_KEY, merge(tag.getIntOr(SLOTS_KEY, 0), remembered));
+			tag.putInt(SLOTS_KEY, merge(tag.getIntOr(SLOTS_KEY, 0), flags));
 		}
-		keepPoseInTag(tag);
+		keepPoseInTag(tag, flags);
 	}
 
 	public static CompoundTag syncTag(ArmorStand stand) {
 		writeOntoStand(stand);
 		CompoundTag tag = new CompoundTag();
-		if (!(stand instanceof HeadSkinHolder holder) || remembered == 0) {
+		if (!(stand instanceof HeadSkinHolder holder)) {
+			return tag;
+		}
+		int flags = remembered.get();
+		if (flags == 0) {
 			return tag;
 		}
 		tag.putInt(SLOTS_KEY, holder.pasheadskins$disabledSlots());
 		CompoundTag pose = new CompoundTag();
-		pose.store("Head", Rotations.CODEC, encodeHead(stand.getHeadPose(), remembered));
+		pose.store("Head", Rotations.CODEC, encodeHead(stand.getHeadPose(), flags));
 		pose.store("Body", Rotations.CODEC, stand.getBodyPose());
 		pose.store("LeftArm", Rotations.CODEC, stand.getLeftArmPose());
 		pose.store("RightArm", Rotations.CODEC, stand.getRightArmPose());
@@ -157,13 +169,13 @@ public final class StandSlotFlags {
 		return stand.getItemBySlot(EquipmentSlot.HEAD).get(DataComponents.PROFILE);
 	}
 
-	private static void keepPoseInTag(CompoundTag tag) {
-		if (!tag.contains(POSE_KEY) || remembered == 0) {
+	private static void keepPoseInTag(CompoundTag tag, int flags) {
+		if (!tag.contains(POSE_KEY) || flags == 0) {
 			return;
 		}
 		CompoundTag pose = tag.getCompoundOrEmpty(POSE_KEY);
 		pose.read("Head", Rotations.CODEC).ifPresent(head -> {
-			pose.store("Head", Rotations.CODEC, encodeHead(head, remembered));
+			pose.store("Head", Rotations.CODEC, encodeHead(head, flags));
 		});
 	}
 

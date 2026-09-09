@@ -1,11 +1,13 @@
 package pasheadskins;
 
+import java.util.function.Consumer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -16,6 +18,8 @@ import pasheadskins.net.HeadSkinLockPayload;
 
 public class PasHeadSkins implements ModInitializer {
 	public static final String MOD_ID = "pasheadskins";
+	private static final double EDIT_RANGE = 256.0;
+	private static Consumer<ArmorStand> clientInvisible;
 
 	@Override
 	public void onInitialize() {
@@ -43,6 +47,7 @@ public class PasHeadSkins implements ModInitializer {
 
 		EntityTrackingEvents.START_TRACKING.register((entity, player) -> {
 			if (entity instanceof ArmorStand stand) {
+				StandSlotFlags.writeOntoStand(stand);
 				syncTo(player, stand);
 			}
 		});
@@ -125,7 +130,7 @@ public class PasHeadSkins implements ModInitializer {
 		if (!(entity instanceof ArmorStand stand)) {
 			return null;
 		}
-		if (player.distanceToSqr(stand) > 64.0 * 64.0) {
+		if (player.distanceToSqr(stand) > EDIT_RANGE * EDIT_RANGE) {
 			return null;
 		}
 		return stand;
@@ -156,5 +161,32 @@ public class PasHeadSkins implements ModInitializer {
 
 	static void syncCapeSource(ServerPlayer player, ArmorStand stand) {
 		ServerPlayNetworking.send(player, new HeadSkinCapeSourcePayload(stand.getId(), HeadSkinFlags.capeSource(stand).wire()));
+	}
+
+	public static void setClientInvisibleHook(Consumer<ArmorStand> hook) {
+		clientInvisible = hook;
+	}
+
+	// Armor Poser (and vanilla NBT) land here. Head Skin stays off after they
+	// make the stand visible again; they have to turn it back on themselves.
+	public static void onStandInvisible(ArmorStand stand) {
+		if (HeadSkinFlags.isDisabled(stand)) {
+			return;
+		}
+		if (stand.level() != null && stand.level().isClientSide()) {
+			if (clientInvisible != null) {
+				clientInvisible.accept(stand);
+			} else {
+				HeadSkinFlags.setDisabled(stand, true, false);
+			}
+			return;
+		}
+		HeadSkinFlags.setDisabled(stand, true, false);
+		if (stand.level() instanceof ServerLevel serverLevel && serverLevel.getServer() != null) {
+			HeadSkinWorldData.get(serverLevel.getServer()).setDisabled(stand.getUUID(), true);
+			for (ServerPlayer tracker : PlayerLookup.tracking(stand)) {
+				syncDisabled(tracker, stand);
+			}
+		}
 	}
 }

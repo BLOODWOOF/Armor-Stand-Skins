@@ -24,6 +24,7 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 		EnabledCapes.load();
 		CapeSources.load();
 		HeadSkinFlags.setPacketChannel(() -> ClientPlayNetworking.canSend(HeadSkinDisabledPayload.TYPE));
+		PasHeadSkins.setClientInvisibleHook(stand -> HeadSkinControls.setHeadSkinVisible(stand, false));
 		HeadSkinFlags.bind(new HeadSkinFlags.Lookup() {
 			@Override
 			public boolean isDisabled(ArmorStand stand) {
@@ -102,6 +103,7 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			LockedHeadSkins.save();
 			EnabledCapes.save();
 			CapeSources.save();
+			EquippedHeadHider.clearPending();
 		});
 
 		if (!FabricLoader.getInstance().isModLoaded("armorposer")) {

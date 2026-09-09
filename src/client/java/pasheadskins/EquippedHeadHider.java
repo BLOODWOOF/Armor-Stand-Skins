@@ -37,7 +37,7 @@ public final class EquippedHeadHider {
 
 		Entity entity = client.level.getEntity(entityId);
 		if (entity instanceof ArmorStand stand) {
-			HeadSkinFlags.setDisabled(stand, disabled);
+			HeadSkinFlags.setDisabled(stand, disabled, false);
 			pendingDisabled.remove(entityId);
 			return;
 		}
@@ -54,7 +54,7 @@ public final class EquippedHeadHider {
 
 		Entity entity = client.level.getEntity(entityId);
 		if (entity instanceof ArmorStand stand) {
-			HeadSkinFlags.setLocked(stand, locked, profile);
+			HeadSkinFlags.setLocked(stand, locked, profile, false);
 			pendingLock.remove(entityId);
 			return;
 		}
@@ -71,7 +71,7 @@ public final class EquippedHeadHider {
 
 		Entity entity = client.level.getEntity(entityId);
 		if (entity instanceof ArmorStand stand) {
-			HeadSkinFlags.setCapeEnabled(stand, enabled);
+			HeadSkinFlags.setCapeEnabled(stand, enabled, false);
 			pendingCape.remove(entityId);
 			return;
 		}
@@ -89,7 +89,7 @@ public final class EquippedHeadHider {
 
 		Entity entity = client.level.getEntity(entityId);
 		if (entity instanceof ArmorStand stand) {
-			HeadSkinFlags.setCapeSource(stand, next);
+			HeadSkinFlags.setCapeSource(stand, next, false);
 			pendingCapeSource.remove(entityId);
 			return;
 		}
@@ -97,7 +97,18 @@ public final class EquippedHeadHider {
 		pendingCapeSource.put(entityId, next);
 	}
 
+	public static void clearPending() {
+		pendingDisabled.clear();
+		pendingLock.clear();
+		pendingCape.clear();
+		pendingCapeSource.clear();
+	}
+
 	public static void applyLoadedStand(ArmorStand stand) {
+		if (StandSlotFlags.hasRecord(stand)) {
+			StandSlotFlags.applyToHolder(stand);
+		}
+
 		Boolean disabled = pendingDisabled.remove(stand.getId());
 		HeadSkinLockPayloadState lock = pendingLock.remove(stand.getId());
 		Boolean cape = pendingCape.remove(stand.getId());
@@ -106,24 +117,23 @@ public final class EquippedHeadHider {
 
 		if (fromPacket) {
 			if (disabled != null) {
-				HeadSkinFlags.setDisabled(stand, disabled);
+				HeadSkinFlags.setDisabled(stand, disabled, false);
 			}
 			if (lock != null) {
-				HeadSkinFlags.setLocked(stand, lock.locked(), lock.profile());
+				HeadSkinFlags.setLocked(stand, lock.locked(), lock.profile(), false);
 			}
 			if (cape != null) {
-				HeadSkinFlags.setCapeEnabled(stand, cape);
+				HeadSkinFlags.setCapeEnabled(stand, cape, false);
 			}
 			if (capeSource != null) {
-				HeadSkinFlags.setCapeSource(stand, capeSource);
+				HeadSkinFlags.setCapeSource(stand, capeSource, false);
 			} else {
 				applySavedCapeSource(stand);
 			}
 			return;
 		}
 
-		if (!HeadSkinFlags.packetChannelOpen() && StandSlotFlags.hasRecord(stand)) {
-			StandSlotFlags.applyToHolder(stand);
+		if (StandSlotFlags.hasRecord(stand)) {
 			return;
 		}
 

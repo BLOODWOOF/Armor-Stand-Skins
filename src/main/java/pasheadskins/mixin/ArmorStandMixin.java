@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import pasheadskins.CapeSource;
 import pasheadskins.HeadSkinHolder;
+import pasheadskins.PasHeadSkins;
 
 @Mixin(ArmorStand.class)
 public class ArmorStandMixin implements HeadSkinHolder {
@@ -123,5 +124,13 @@ public class ArmorStandMixin implements HeadSkinHolder {
 		this.pasheadskins$disabled = input.getBooleanOr("HeadSkinDisabled", false);
 		this.pasheadskins$lockedProfile = input.read("HeadSkinLockProfile", ResolvableProfile.CODEC).orElse(null);
 		this.pasheadskins$locked = input.getBooleanOr("HeadSkinLocked", false) && this.pasheadskins$lockedProfile != null;
+	}
+
+	@Inject(method = "setInvisible", at = @At("TAIL"), require = 0)
+	private void pasheadskins$offHeadSkinWhenInvisible(boolean invisible, CallbackInfo ci) {
+		if (!invisible) {
+			return;
+		}
+		PasHeadSkins.onStandInvisible((ArmorStand) (Object) this);
 	}
 }
