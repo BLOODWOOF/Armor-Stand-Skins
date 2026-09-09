@@ -13,6 +13,8 @@ Fabric mod for Minecraft 26.2. An armor stand wearing a player head is drawn as 
 
 [3D Skin Layers](https://modrinth.com/mod/3dskinlayers) is optional. If it is present, hat, jacket, sleeves, and pants get the extra 3D overlay on skinned stands.
 
+[Wavey Capes](https://modrinth.com/mod/wavey-capes) is optional. It only animates player capes; skinned stands keep their own cloak so Wavey Capes does not hide it. Cape textures still come from the same live player skin Wavey Capes uses.
+
 Without the jar on a dedicated server, other players still see whatever their own client draws. Putting it on the server later keeps using the same packets; flags live in world data instead of stand NBT.
 
 ## Usage

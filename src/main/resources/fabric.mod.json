@@ -41,6 +41,7 @@
 	},
 	"suggests": {
 		"armorposer": "*",
-		"skinlayers3d": "*"
+		"skinlayers3d": "*",
+		"waveycapes": "*"
 	}
 }

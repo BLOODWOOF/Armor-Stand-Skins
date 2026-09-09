@@ -59,7 +59,7 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 
 	@Inject(method = "<init>", at = @At("RETURN"))
 	private void pasheadskins$addCapeLayer(EntityRendererProvider.Context context, CallbackInfo ci) {
-		this.addLayer(new HeadStandCapeLayer((ArmorStandRenderer) (Object) this, context));
+		this.addLayer(new HeadStandCapeLayer((ArmorStandRenderer) (Object) this));
 	}
 
 	@Inject(
@@ -109,9 +109,8 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 			boolean slim = info.playerSkin().model() == PlayerModelType.SLIM;
 			head.pasheadskins$setHeadSkin(texture, slim);
 			if (HeadSkinFlags.isCapeEnabled(stand)) {
-				Identifier cape = texturePath(info.playerSkin().cape());
-				Identifier elytra = texturePath(info.playerSkin().elytra());
-				head.pasheadskins$setCapeTextures(cape, elytra != null ? elytra : cape);
+				Identifier[] cloak = HeadSkinLookup.capeAndElytra(client, profile, info.gameProfile(), info.playerSkin());
+				head.pasheadskins$setCapeTextures(cloak[0], cloak[1]);
 			}
 			EquippedHeadHider.hideOnState(state);
 			state.isBaby = false;

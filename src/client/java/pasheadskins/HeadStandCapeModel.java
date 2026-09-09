@@ -2,7 +2,7 @@ package pasheadskins;
 
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.model.object.armorstand.ArmorStandArmorModel;
+import net.minecraft.client.model.player.PlayerCapeModel;
 import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
 import org.joml.Quaternionf;
 
@@ -11,29 +11,34 @@ public class HeadStandCapeModel extends EntityModel<ArmorStandRenderState> {
 
 	private final ModelPart body;
 	private final ModelPart cape;
-	private ModelPart standBody;
 
-	public HeadStandCapeModel(ModelPart root) {
+	public HeadStandCapeModel() {
+		this(PlayerCapeModel.createCapeLayer().bakeRoot());
+	}
+
+	private HeadStandCapeModel(ModelPart root) {
 		super(root);
 		this.body = root.getChild("body");
 		this.cape = this.body.getChild("cape");
+		this.body.setPos(0.0F, 0.0F, 0.0F);
+		this.body.xRot = 0.0F;
+		this.body.yRot = 0.0F;
+		this.body.zRot = 0.0F;
 		hide(root, "head");
 		hide(root, "hat");
 		hide(root, "right_arm");
 		hide(root, "left_arm");
 		hide(root, "right_leg");
 		hide(root, "left_leg");
-	}
-
-	public void follow(ArmorStandArmorModel stand) {
-		this.standBody = stand.body;
+		hide(this.body, "jacket");
 	}
 
 	@Override
 	public void setupAnim(ArmorStandRenderState state) {
-		if (this.standBody != null) {
-			copy(this.body, this.standBody);
-		}
+		this.body.setPos(0.0F, 0.0F, 0.0F);
+		this.body.xRot = 0.0F;
+		this.body.yRot = 0.0F;
+		this.body.zRot = 0.0F;
 		this.cape.resetPose();
 		this.cape.rotateBy(new Quaternionf()
 			.rotateY(-(float) Math.PI)
@@ -45,17 +50,5 @@ public class HeadStandCapeModel extends EntityModel<ArmorStandRenderState> {
 		if (root.hasChild(name)) {
 			root.getChild(name).visible = false;
 		}
-	}
-
-	private static void copy(ModelPart to, ModelPart from) {
-		to.x = from.x;
-		to.y = from.y;
-		to.z = from.z;
-		to.xRot = from.xRot;
-		to.yRot = from.yRot;
-		to.zRot = from.zRot;
-		to.xScale = from.xScale;
-		to.yScale = from.yScale;
-		to.zScale = from.zScale;
 	}
 }
