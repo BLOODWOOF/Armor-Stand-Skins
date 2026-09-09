@@ -1,5 +1,8 @@
 package pasheadskins;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.geom.EntityModelSet;
+import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
@@ -26,6 +29,14 @@ public class HeadStandModel extends ArmorStandArmorModel {
 	}
 
 	public static HeadStandModel bake(boolean slim) {
+		try {
+			EntityModelSet models = Minecraft.getInstance().getEntityModels();
+			if (models != null) {
+				ModelPart root = models.bakeLayer(slim ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER);
+				return new HeadStandModel(root, slim);
+			}
+		} catch (Throwable ignored) {
+		}
 		ModelPart root = LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, slim), 64, 64).bakeRoot();
 		return new HeadStandModel(root, slim);
 	}
@@ -55,7 +66,7 @@ public class HeadStandModel extends ArmorStandArmorModel {
 
 		if (state instanceof HeadStandRender head && head.pasheadskins$usingHeadSkin()) {
 			try {
-				SkinLayerCompat.apply(this, head.pasheadskins$texture(), this.slim);
+				SkinLayerCompat.apply(this, head.pasheadskins$texture(), this.slim, state);
 			} catch (Throwable ignored) {
 			}
 			if (!arms) {
@@ -64,6 +75,7 @@ public class HeadStandModel extends ArmorStandArmorModel {
 				this.leftSleeve.visible = false;
 				this.rightSleeve.visible = false;
 			}
+			head.pasheadskins$captureLimbs(this);
 		}
 	}
 

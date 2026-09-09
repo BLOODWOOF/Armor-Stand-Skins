@@ -32,6 +32,7 @@ import pasheadskins.HeadSkinControls;
 import pasheadskins.HeadSkinFlags;
 import pasheadskins.HeadSkinHolder;
 import pasheadskins.HeadSkinLookup;
+import pasheadskins.HeadStandArmor;
 import pasheadskins.HeadStandCapeLayer;
 import pasheadskins.HeadStandModel;
 import pasheadskins.HeadStandRender;
@@ -62,6 +63,7 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 
 	@Inject(method = "<init>", at = @At("RETURN"))
 	private void pasheadskins$addCapeLayer(EntityRendererProvider.Context context, CallbackInfo ci) {
+		HeadStandArmor.bake(context.getModelSet());
 		this.addLayer(new HeadStandCapeLayer((ArmorStandRenderer) (Object) this));
 	}
 

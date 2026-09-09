@@ -6,6 +6,7 @@
 	"client": [
 		"ArmorStandRenderStateMixin",
 		"ArmorStandRendererMixin",
+		"HumanoidArmorLayerMixin",
 		"WingsLayerMixin"
 	],
 	"injectors": {

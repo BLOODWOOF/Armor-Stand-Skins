@@ -13,11 +13,11 @@ Fabric mod for Minecraft 26.2. An armor stand wearing a player head is drawn as 
 
 Other players need this mod too. On a dedicated server, putting this jar next to the world is still the straightforward way to share Head Skin, Lock Skin, Cape, and Cape Source. If you cannot do that but Armor Poser is on that server, survival clients can piggyback the same flags through Poser's pose sync. Vanilla players still see a normal stand with a head. Pick-block may show a larger DisabledSlots number; that is the flag channel, not a new named tag.
 
-[3D Skin Layers](https://modrinth.com/mod/3dskinlayers) is optional. If it is present, hat, jacket, sleeves, and pants get the extra 3D overlay on skinned stands.
+[3D Skin Layers](https://modrinth.com/mod/3dskinlayers) is optional. If it is present, hat, jacket, sleeves, and pants use the same 3D overlay (and the same toggles / distance fade) as players. Armor uses the player armor models too, so it sits on the skin the same way it does on a player.
 
 [Wavey Capes](https://modrinth.com/mod/wavey-capes) is optional. It only animates player capes; skinned stands keep their own cloak so Wavey Capes does not hide it.
 
-[Essential](https://essential.gg) is optional. Cape Source can load wardrobe capes from it. Mojang-only ignores those, Essential-only uses them, and Both prefers a live Mojang cape when that player has one.
+[Essential](https://essential.gg) is optional. Cape Source can load wardrobe capes from it (the vanilla cloak mesh, not Essential's 3D cape cosmetics). Mojang-only ignores those, Essential-only uses them, and Both prefers a Mojang cape when that player has one equipped.
 
 If neither this jar nor Armor Poser is on the dedicated server, flags stay on your client only.
 

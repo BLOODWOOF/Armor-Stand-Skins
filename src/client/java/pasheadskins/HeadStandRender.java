@@ -22,4 +22,8 @@ public interface HeadStandRender {
 	void pasheadskins$captureCapeBody(net.minecraft.client.model.geom.ModelPart body);
 
 	void pasheadskins$applyCapeBody(net.minecraft.client.model.geom.ModelPart body);
+
+	void pasheadskins$captureLimbs(net.minecraft.client.model.HumanoidModel<?> model);
+
+	void pasheadskins$applyLimbs(net.minecraft.client.model.HumanoidModel<?> model);
 }

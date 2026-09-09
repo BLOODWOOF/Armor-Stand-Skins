@@ -160,7 +160,7 @@ public final class HeadSkinLookup {
 
 		return switch (source) {
 			case MOJANG -> completeCloak(mojangCloak(client, id, gameProfile, packed, EssentialCapes.present()));
-			case ESSENTIAL -> completeCloak(EssentialCapes.cloak(id));
+			case ESSENTIAL -> completeCloak(essentialCloak(client, id, gameProfile));
 			case BOTH -> bothCloak(client, id, gameProfile, packed);
 		};
 	}
@@ -170,14 +170,29 @@ public final class HeadSkinLookup {
 			return completeCloak(mojangCloak(client, id, gameProfile, packed, false));
 		}
 
-		Identifier[] mojang = fetchedCloak(client, id);
+		// Session fetch is the source of truth for "has a Mojang cape equipped".
+		// Live PlayerInfo is patched by Essential, so we skip that here. Wait
+		// until the fetch finishes so we dont flash a wardrobe cape over a real
+		// Mojang one.
+		Identifier[] mojang = mojangCloak(client, id, gameProfile, packed, true);
 		if (mojang[0] != null || mojang[1] != null) {
 			return completeCloak(mojang);
 		}
-		if (mojangFetchDone(id)) {
-			return completeCloak(EssentialCapes.cloak(id));
+		if (!mojangFetchDone(id)) {
+			return completeCloak(null);
 		}
-		return completeCloak(null);
+		return completeCloak(essentialCloak(client, id, gameProfile));
+	}
+
+	// Essential already patches online PlayerInfo skins. Use that when we can,
+	// then fall back to their wardrobe hash download.
+	private static Identifier[] essentialCloak(Minecraft client, UUID id, GameProfile gameProfile) {
+		Identifier cape = liveCape(client, id, gameProfile);
+		Identifier elytra = liveElytra(client, id, gameProfile);
+		if (cape != null || elytra != null) {
+			return new Identifier[] { cape, elytra };
+		}
+		return EssentialCapes.cloak(id);
 	}
 
 	private static Identifier[] mojangCloak(Minecraft client, UUID id, GameProfile gameProfile, PlayerSkin packed, boolean skipLive) {
@@ -203,17 +218,12 @@ public final class HeadSkinLookup {
 		return new Identifier[] { cape, elytra };
 	}
 
-	private static Identifier[] fetchedCloak(Minecraft client, UUID id) {
-		PlayerSkin fetched = fetchedSessionSkin(client, id);
-		return new Identifier[] { texturePath(fetched, true), texturePath(fetched, false) };
-	}
-
 	private static boolean mojangFetchDone(UUID id) {
 		if (id == null) {
 			return true;
 		}
 		CompletableFuture<Optional<PlayerSkin>> future = SESSION_SKINS.get(id);
-		return future != null && future.isDone();
+		return future == null || future.isDone();
 	}
 
 	private static Identifier[] completeCloak(Identifier[] cloak) {

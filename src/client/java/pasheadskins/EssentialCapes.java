@@ -1,34 +1,37 @@
 package pasheadskins;
 
-import com.google.common.collect.HashMultimap;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
-import com.mojang.authlib.properties.PropertyMap;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.lang.reflect.Modifier;
+import java.nio.file.Path;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.SkinTextureDownloader;
 import net.minecraft.core.ClientAsset;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.player.PlayerSkin;
 
-// Optional hook into Essential's wardrobe. We only keep 64-char texture hashes;
-// their 3d cape cosmetics dont fit the vanilla cloak mesh.
+// Optional hook into Essential's wardrobe. Vanilla SkinManager.unpackTextures
+// wants a signed property, so a homemade profile never loads. We pull the
+// 64-char hash and download it the same way cape textures normally do.
 final class EssentialCapes {
 	private static final Identifier[] NONE = new Identifier[] { null, null };
 	private static final String DISABLED = "CAPE_DISABLED";
-	private static final ConcurrentHashMap<String, CompletableFuture<Optional<PlayerSkin>>> BY_HASH = new ConcurrentHashMap<>();
+	private static final ConcurrentHashMap<String, CompletableFuture<Identifier>> BY_HASH = new ConcurrentHashMap<>();
 
 	private EssentialCapes() {
 	}
 
 	static boolean present() {
+		try {
+			if (FabricLoader.getInstance().isModLoaded("essential")) {
+				return true;
+			}
+		} catch (Throwable ignored) {
+		}
 		try {
 			return Holder.available();
 		} catch (Throwable ignored) {
@@ -59,32 +62,45 @@ final class EssentialCapes {
 	}
 
 	private static Identifier[] fromHash(Minecraft client, String hash) {
-		if (client == null || client.getSkinManager() == null || !usableHash(hash)) {
+		if (client == null || !usableHash(hash)) {
 			return NONE;
 		}
 
-		CompletableFuture<Optional<PlayerSkin>> future = BY_HASH.computeIfAbsent(hash, key -> loadCape(client, key));
+		String key = hash.toLowerCase(Locale.ROOT);
+		CompletableFuture<Identifier> future = BY_HASH.computeIfAbsent(key, h -> loadCape(client, h));
 		try {
-			PlayerSkin skin = future.getNow(Optional.empty()).orElse(null);
-			Identifier cape = texturePath(skin);
-			return new Identifier[] { cape, cape };
+			Identifier cape = future.getNow(null);
+			return cape == null ? NONE : new Identifier[] { cape, cape };
 		} catch (Throwable ignored) {
 			return NONE;
 		}
 	}
 
-	private static CompletableFuture<Optional<PlayerSkin>> loadCape(Minecraft client, String hash) {
+	private static CompletableFuture<Identifier> loadCape(Minecraft client, String hash) {
 		try {
-			String json = "{\"textures\":{\"CAPE\":{\"url\":\"http://textures.minecraft.net/texture/" + hash + "\"}}}";
-			String encoded = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-			HashMultimap<String, Property> values = HashMultimap.create();
-			values.put("textures", new Property("textures", encoded));
-			UUID dummy = UUID.nameUUIDFromBytes(("pasheadskins-cape-" + hash).getBytes(StandardCharsets.UTF_8));
-			GameProfile profile = new GameProfile(dummy, "cape", new PropertyMap(values));
-			return client.getSkinManager().get(profile);
+			SkinTextureDownloader downloader = Holder.downloader(client);
+			if (downloader == null || client.gameDirectory == null) {
+				return CompletableFuture.completedFuture(null);
+			}
+
+			Identifier id = Identifier.fromNamespaceAndPath("pasheadskins", "cape/" + hash);
+			Path cache = client.gameDirectory.toPath()
+				.resolve("assets")
+				.resolve("skins")
+				.resolve("pasheadskins")
+				.resolve(hash.substring(0, 2))
+				.resolve(hash);
+			String url = "http://textures.minecraft.net/texture/" + hash;
+			return downloader.downloadAndRegisterSkin(id, cache, url, false)
+				.thenApply(EssentialCapes::texturePath)
+				.exceptionally(err -> null);
 		} catch (Throwable ignored) {
-			return CompletableFuture.completedFuture(Optional.empty());
+			return CompletableFuture.completedFuture(null);
 		}
+	}
+
+	private static Identifier texturePath(ClientAsset.Texture texture) {
+		return texture == null ? null : texture.texturePath();
 	}
 
 	private static boolean usableHash(String hash) {
@@ -104,18 +120,24 @@ final class EssentialCapes {
 		return true;
 	}
 
-	private static Identifier texturePath(PlayerSkin skin) {
-		if (skin == null) {
-			return null;
-		}
-		ClientAsset.Texture cape = skin.cape();
-		if (cape == null) {
-			cape = skin.elytra();
-		}
-		return cape == null ? null : cape.texturePath();
-	}
-
 	private static final class Holder {
+		private static SkinTextureDownloader downloader;
+
+		private static SkinTextureDownloader downloader(Minecraft client) {
+			if (downloader != null) {
+				return downloader;
+			}
+			if (client == null || client.getTextureManager() == null) {
+				return null;
+			}
+			try {
+				downloader = new SkinTextureDownloader(client.getProxy(), client.getTextureManager(), client);
+				return downloader;
+			} catch (Throwable ignored) {
+				return null;
+			}
+		}
+
 		private static Object essential() {
 			try {
 				Class<?> cls = Class.forName("gg.essential.Essential");
@@ -161,7 +183,11 @@ final class EssentialCapes {
 			Object connection = call(essential, "getConnectionManager", "connectionManager");
 			Object cosmetics = call(connection, "getCosmeticsManager", "cosmeticsManager");
 			Object infra = call(cosmetics, "getInfraEquippedOutfitsManager", "infraEquippedOutfitsManager");
-			return hashFrom(infra, uuid);
+			String fromInfra = hashFrom(infra, uuid);
+			if (usableHash(fromInfra)) {
+				return fromInfra;
+			}
+			return hashFrom(connection, uuid);
 		}
 
 		private static Object ingameManager() {
@@ -173,25 +199,66 @@ final class EssentialCapes {
 			if (connection == null) {
 				return null;
 			}
-			Object hash = hashMethodOwner(connection);
-			if (hash != null) {
-				return hash;
+			if (findCapeHash(connection.getClass()) != null) {
+				return connection;
 			}
-			return call(
+			Object named = call(
 				connection,
+				"getEssential$ingameEquippedOutfitsManager",
+				"getEssential$equippedOutfitsManager",
+				"essential$getIngameEquippedOutfitsManager",
 				"getEquippedOutfitsManager",
 				"equippedOutfitsManager",
 				"essential$getEquippedOutfitsManager",
-				"essential$equippedOutfitsManager"
+				"essential$equippedOutfitsManager",
+				"ingameEquippedOutfitsManager"
 			);
+			if (named != null && findCapeHash(named.getClass()) != null) {
+				return named;
+			}
+			return ownerOn(connection);
 		}
 
-		private static Object hashMethodOwner(Object root) {
+		private static Object ownerOn(Object root) {
 			if (root == null) {
 				return null;
 			}
-			if (findCapeHash(root.getClass()) != null) {
-				return root;
+			Class<?> type = root.getClass();
+			for (Method method : type.getMethods()) {
+				if (method.getParameterCount() != 0 || method.getReturnType() == void.class) {
+					continue;
+				}
+				String name = method.getName().toLowerCase(Locale.ROOT);
+				if (!(name.contains("outfit") || name.contains("cape") || name.contains("essential"))) {
+					continue;
+				}
+				try {
+					method.setAccessible(true);
+					Object value = method.invoke(root);
+					if (value != null && findCapeHash(value.getClass()) != null) {
+						return value;
+					}
+				} catch (Throwable ignored) {
+				}
+			}
+			for (Class<?> cursor = type; cursor != null && cursor != Object.class; cursor = cursor.getSuperclass()) {
+				for (Field field : cursor.getDeclaredFields()) {
+					if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()) {
+						continue;
+					}
+					String name = field.getName().toLowerCase(Locale.ROOT);
+					if (!(name.contains("outfit") || name.contains("cape") || name.contains("essential"))) {
+						continue;
+					}
+					try {
+						field.setAccessible(true);
+						Object value = field.get(root);
+						if (value != null && findCapeHash(value.getClass()) != null) {
+							return value;
+						}
+					} catch (Throwable ignored) {
+					}
+				}
 			}
 			return null;
 		}
@@ -213,27 +280,36 @@ final class EssentialCapes {
 		}
 
 		private static Method findCapeHash(Class<?> type) {
+			if (type == null) {
+				return null;
+			}
 			for (Class<?> cursor = type; cursor != null && cursor != Object.class; cursor = cursor.getSuperclass()) {
-				try {
-					Method method = cursor.getMethod("getCapeHash", UUID.class);
-					method.setAccessible(true);
+				Method method = methodNamed(cursor, "getCapeHash");
+				if (method != null) {
 					return method;
-				} catch (NoSuchMethodException ignored) {
-				}
-				try {
-					Method method = cursor.getDeclaredMethod("getCapeHash", UUID.class);
-					method.setAccessible(true);
-					return method;
-				} catch (NoSuchMethodException ignored) {
 				}
 			}
 			for (Class<?> iface : type.getInterfaces()) {
-				try {
-					Method method = iface.getMethod("getCapeHash", UUID.class);
-					method.setAccessible(true);
+				Method method = methodNamed(iface, "getCapeHash");
+				if (method != null) {
 					return method;
-				} catch (NoSuchMethodException ignored) {
 				}
+			}
+			return null;
+		}
+
+		private static Method methodNamed(Class<?> type, String name) {
+			try {
+				Method method = type.getMethod(name, UUID.class);
+				method.setAccessible(true);
+				return method;
+			} catch (NoSuchMethodException ignored) {
+			}
+			try {
+				Method method = type.getDeclaredMethod(name, UUID.class);
+				method.setAccessible(true);
+				return method;
+			} catch (NoSuchMethodException ignored) {
 			}
 			return null;
 		}

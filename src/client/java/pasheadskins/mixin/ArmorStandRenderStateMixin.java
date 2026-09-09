@@ -53,6 +53,12 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 	@Unique
 	private float pasheadskins$capeZScale = 1.0F;
 
+	@Unique
+	private boolean pasheadskins$limbsSet;
+
+	@Unique
+	private float[] pasheadskins$limbs;
+
 	@Override
 	public void pasheadskins$setHeadSkin(Identifier texture, boolean slim) {
 		this.pasheadskins$texture = texture;
@@ -74,6 +80,7 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 		this.pasheadskins$slim = false;
 		this.pasheadskins$usingHeadSkin = false;
 		this.pasheadskins$capeBodySet = false;
+		this.pasheadskins$limbsSet = false;
 	}
 
 	@Override
@@ -129,5 +136,74 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 		body.xScale = this.pasheadskins$capeXScale;
 		body.yScale = this.pasheadskins$capeYScale;
 		body.zScale = this.pasheadskins$capeZScale;
+	}
+
+	@Override
+	public void pasheadskins$captureLimbs(net.minecraft.client.model.HumanoidModel<?> model) {
+		if (model == null) {
+			this.pasheadskins$limbsSet = false;
+			return;
+		}
+		if (this.pasheadskins$limbs == null) {
+			this.pasheadskins$limbs = new float[63];
+		}
+		int i = 0;
+		i = pack(model.head, this.pasheadskins$limbs, i);
+		i = pack(model.hat, this.pasheadskins$limbs, i);
+		i = pack(model.body, this.pasheadskins$limbs, i);
+		i = pack(model.leftArm, this.pasheadskins$limbs, i);
+		i = pack(model.rightArm, this.pasheadskins$limbs, i);
+		i = pack(model.leftLeg, this.pasheadskins$limbs, i);
+		pack(model.rightLeg, this.pasheadskins$limbs, i);
+		this.pasheadskins$limbsSet = true;
+	}
+
+	@Override
+	public void pasheadskins$applyLimbs(net.minecraft.client.model.HumanoidModel<?> model) {
+		if (!this.pasheadskins$limbsSet || this.pasheadskins$limbs == null || model == null) {
+			return;
+		}
+		int i = 0;
+		i = unpack(model.head, this.pasheadskins$limbs, i);
+		i = unpack(model.hat, this.pasheadskins$limbs, i);
+		i = unpack(model.body, this.pasheadskins$limbs, i);
+		i = unpack(model.leftArm, this.pasheadskins$limbs, i);
+		i = unpack(model.rightArm, this.pasheadskins$limbs, i);
+		i = unpack(model.leftLeg, this.pasheadskins$limbs, i);
+		unpack(model.rightLeg, this.pasheadskins$limbs, i);
+	}
+
+	@Unique
+	private static int pack(net.minecraft.client.model.geom.ModelPart part, float[] out, int i) {
+		if (part == null) {
+			return i + 9;
+		}
+		out[i++] = part.x;
+		out[i++] = part.y;
+		out[i++] = part.z;
+		out[i++] = part.xRot;
+		out[i++] = part.yRot;
+		out[i++] = part.zRot;
+		out[i++] = part.xScale;
+		out[i++] = part.yScale;
+		out[i++] = part.zScale;
+		return i;
+	}
+
+	@Unique
+	private static int unpack(net.minecraft.client.model.geom.ModelPart part, float[] in, int i) {
+		if (part == null) {
+			return i + 9;
+		}
+		part.x = in[i++];
+		part.y = in[i++];
+		part.z = in[i++];
+		part.xRot = in[i++];
+		part.yRot = in[i++];
+		part.zRot = in[i++];
+		part.xScale = in[i++];
+		part.yScale = in[i++];
+		part.zScale = in[i++];
+		return i;
 	}
 }

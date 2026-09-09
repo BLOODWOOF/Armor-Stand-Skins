@@ -1,6 +1,7 @@
 package pasheadskins;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.tr7zw.skinlayers.SkinLayersModBase;
 import dev.tr7zw.skinlayers.SkinUtil;
 import dev.tr7zw.skinlayers.accessor.ModelPartInjector;
 import dev.tr7zw.skinlayers.accessor.PlayerSettings;
@@ -8,9 +9,12 @@ import dev.tr7zw.skinlayers.api.Mesh;
 import dev.tr7zw.skinlayers.api.MeshHelper;
 import dev.tr7zw.skinlayers.api.OffsetProvider;
 import dev.tr7zw.skinlayers.api.SkinLayersAPI;
+import dev.tr7zw.skinlayers.versionless.config.Config;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
 import net.minecraft.resources.Identifier;
 
 final class SkinLayerSupport {
@@ -19,23 +23,45 @@ final class SkinLayerSupport {
 	private SkinLayerSupport() {
 	}
 
-	static void apply(HeadStandModel model, Identifier texture, boolean slim) {
-		CachedLayers layers = LAYER_CACHE.computeIfAbsent(new LayerKey(texture, slim), key -> new CachedLayers());
-		if (!buildIfNeeded(layers, texture, slim)) {
+	static void apply(HeadStandModel model, Identifier texture, boolean slim, ArmorStandRenderState state) {
+		Config config = SkinLayersModBase.config;
+		if (config == null || Minecraft.getInstance() == null || Minecraft.getInstance().player == null) {
+			clear(model);
 			return;
 		}
 
-		inject(model.hat, layers.getHeadMesh(), OffsetProvider.HEAD);
-		inject(model.jacket, layers.getTorsoMesh(), OffsetProvider.BODY);
-		inject(model.leftPants, layers.getLeftLegMesh(), OffsetProvider.LEFT_LEG);
-		inject(model.rightPants, layers.getRightLegMesh(), OffsetProvider.RIGHT_LEG);
-		if (slim) {
-			inject(model.leftSleeve, layers.getLeftArmMesh(), OffsetProvider.LEFT_ARM_SLIM);
-			inject(model.rightSleeve, layers.getRightArmMesh(), OffsetProvider.RIGHT_ARM_SLIM);
-		} else {
-			inject(model.leftSleeve, layers.getLeftArmMesh(), OffsetProvider.LEFT_ARM);
-			inject(model.rightSleeve, layers.getRightArmMesh(), OffsetProvider.RIGHT_ARM);
+		int lod = config.renderDistanceLOD;
+		if (state != null && lod > 0 && state.distanceToCameraSq > (double) lod * (double) lod) {
+			clear(model);
+			return;
 		}
+
+		CachedLayers layers = LAYER_CACHE.computeIfAbsent(new LayerKey(texture, slim), key -> new CachedLayers());
+		if (!buildIfNeeded(layers, texture, slim)) {
+			clear(model);
+			return;
+		}
+
+		inject(model.hat, config.enableHat ? layers.getHeadMesh() : null, OffsetProvider.HEAD);
+		inject(model.jacket, config.enableJacket ? layers.getTorsoMesh() : null, OffsetProvider.BODY);
+		inject(model.leftPants, config.enableLeftPants ? layers.getLeftLegMesh() : null, OffsetProvider.LEFT_LEG);
+		inject(model.rightPants, config.enableRightPants ? layers.getRightLegMesh() : null, OffsetProvider.RIGHT_LEG);
+		if (slim) {
+			inject(model.leftSleeve, config.enableLeftSleeve ? layers.getLeftArmMesh() : null, OffsetProvider.LEFT_ARM_SLIM);
+			inject(model.rightSleeve, config.enableRightSleeve ? layers.getRightArmMesh() : null, OffsetProvider.RIGHT_ARM_SLIM);
+		} else {
+			inject(model.leftSleeve, config.enableLeftSleeve ? layers.getLeftArmMesh() : null, OffsetProvider.LEFT_ARM);
+			inject(model.rightSleeve, config.enableRightSleeve ? layers.getRightArmMesh() : null, OffsetProvider.RIGHT_ARM);
+		}
+	}
+
+	private static void clear(HeadStandModel model) {
+		inject(model.hat, null, null);
+		inject(model.jacket, null, null);
+		inject(model.leftPants, null, null);
+		inject(model.rightPants, null, null);
+		inject(model.leftSleeve, null, null);
+		inject(model.rightSleeve, null, null);
 	}
 
 	private static boolean buildIfNeeded(CachedLayers layers, Identifier texture, boolean slim) {
@@ -70,8 +96,6 @@ final class SkinLayerSupport {
 			return;
 		}
 
-		part.visible = true;
-		part.skipDraw = false;
 		((ModelPartInjector) (Object) part).setInjectedMesh(mesh, offset);
 	}
 
