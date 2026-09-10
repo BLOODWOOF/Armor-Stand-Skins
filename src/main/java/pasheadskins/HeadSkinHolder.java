@@ -31,4 +31,12 @@ public interface HeadSkinHolder {
 	int pasheadskins$disabledSlots();
 
 	void pasheadskins$setDisabledSlots(int slots);
+
+	String pasheadskins$passwordHash();
+
+	void pasheadskins$setPasswordHash(String hash);
+
+	boolean pasheadskins$asthmaForced();
+
+	void pasheadskins$setAsthmaForced(boolean forced);
 }

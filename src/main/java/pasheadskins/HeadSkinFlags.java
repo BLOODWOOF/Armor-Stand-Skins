@@ -143,6 +143,38 @@ public final class HeadSkinFlags {
 		return stand.getItemBySlot(EquipmentSlot.HEAD).get(DataComponents.PROFILE);
 	}
 
+	public static String passwordHash(ArmorStand stand) {
+		if (stand instanceof HeadSkinHolder holder) {
+			String hash = holder.pasheadskins$passwordHash();
+			return hash == null ? "" : hash;
+		}
+		return "";
+	}
+
+	public static void setPasswordHash(ArmorStand stand, String hash) {
+		if (stand instanceof HeadSkinHolder holder) {
+			holder.pasheadskins$setPasswordHash(hash == null ? "" : hash);
+		}
+	}
+
+	public static boolean hasPassword(ArmorStand stand) {
+		return !passwordHash(stand).isEmpty();
+	}
+
+	public static boolean asthmaForced(ArmorStand stand) {
+		return stand instanceof HeadSkinHolder holder && holder.pasheadskins$asthmaForced();
+	}
+
+	public static void setAsthmaForced(ArmorStand stand, boolean forced) {
+		if (stand instanceof HeadSkinHolder holder) {
+			holder.pasheadskins$setAsthmaForced(forced);
+		}
+	}
+
+	public static boolean isAsthmatic(ArmorStand stand) {
+		return asthmaForced(stand) || StandSecrets.lucky(stand.getUUID());
+	}
+
 	public interface Lookup {
 		boolean isDisabled(ArmorStand stand);
 

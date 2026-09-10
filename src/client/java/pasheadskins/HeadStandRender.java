@@ -9,6 +9,10 @@ public interface HeadStandRender {
 
 	void pasheadskins$clearHeadSkin();
 
+	void pasheadskins$setAsthmatic(boolean asthmatic);
+
+	boolean pasheadskins$asthmatic();
+
 	boolean pasheadskins$usingHeadSkin();
 
 	boolean pasheadskins$slim();

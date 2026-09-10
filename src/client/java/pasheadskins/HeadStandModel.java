@@ -52,6 +52,9 @@ public class HeadStandModel extends ArmorStandArmorModel {
 			HeadStandIdle.apply(this, state);
 		} else {
 			super.setupAnim(state);
+			if (skinned) {
+				HeadStandIdle.overlayStruggle(this, state);
+			}
 		}
 		showOverlay(this.hat);
 		showOverlay(this.jacket);

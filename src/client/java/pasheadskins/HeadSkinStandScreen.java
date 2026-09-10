@@ -1,9 +1,13 @@
 package pasheadskins;
 
+import java.util.Map;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.decoration.ArmorStand;
 
@@ -12,6 +16,9 @@ public class HeadSkinStandScreen extends Screen {
 
 	private final ArmorStand stand;
 	private HeadSkinPanel.Placement place;
+	private EditBox password;
+	private Map<AbstractWidget, Boolean> activeSnap;
+	private Map<EditBox, Boolean> editSnap;
 
 	public HeadSkinStandScreen(ArmorStand stand) {
 		super(Component.translatable("pasheadskins.gui.title"));
@@ -65,11 +72,26 @@ public class HeadSkinStandScreen extends Screen {
 		this.addRenderableWidget(HeadSkinPanel.source(next.source(), HeadSkinFlags.capeSource(this.stand), (button, value) -> {
 			HeadSkinControls.setCapeSource(this.stand, value);
 		}));
+		this.password = this.addRenderableWidget(StandLockWidgets.passwordBox(this.font, next.password()));
 
 		int doneY = HeadSkinPanel.standaloneDoneY(next, this.height);
 		this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> this.onClose())
 			.bounds(this.width / 2 - 50, doneY, 100, 20)
 			.build());
+
+		this.activeSnap = StandLockWidgets.newActiveMap();
+		this.editSnap = StandLockWidgets.newEditMap();
+		StandLockWidgets.snapshot(this, this.password, this.activeSnap, this.editSnap);
+		StandLockWidgets.apply(this, this.password, StandLockSession.frozen(this.stand), this.activeSnap, this.editSnap);
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		if (this.password != null && this.password.isFocused() && event.isConfirmation()) {
+			this.submitPassword();
+			return true;
+		}
+		return super.keyPressed(event);
 	}
 
 	@Override
@@ -83,6 +105,16 @@ public class HeadSkinStandScreen extends Screen {
 		this.drawLabel(graphics, next.lock(), "pasheadskins.gui.label.lock_skin", "pasheadskins.gui.label.lock_skin.short");
 		this.drawLabel(graphics, next.cape(), "pasheadskins.gui.label.cape", null);
 		this.drawLabel(graphics, next.source(), "pasheadskins.gui.label.cape_source", "pasheadskins.gui.label.cape_source.short");
+		this.drawLabel(graphics, next.password(), "pasheadskins.gui.label.password", "pasheadskins.gui.label.password.short");
+	}
+
+	private void submitPassword() {
+		if (this.password == null) {
+			return;
+		}
+		HeadSkinControls.submitPassword(this.stand, this.password.getValue());
+		this.password.setValue("");
+		StandLockWidgets.apply(this, this.password, StandLockSession.frozen(this.stand), this.activeSnap, this.editSnap);
 	}
 
 	private void drawLabel(GuiGraphicsExtractor graphics, HeadSkinPanel.Slot slot, String key, String shortKey) {

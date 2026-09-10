@@ -5,7 +5,7 @@ import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 
-// Figures out where the four skin controls fit for the current scaled
+// Figures out where the skin controls fit for the current scaled
 // width/height. Armor Poser's own bottom bar is only nudged when the
 // stacked column still lands on screen. High GUI scale gets a tighter
 // 2x2 so nothing slides off the alligned row.
@@ -16,6 +16,7 @@ public final class HeadSkinPanel {
 	static final int BTN_X = 110;
 	static final int TOGGLE_W = 40;
 	static final int SOURCE_W = 72;
+	static final int PASS_W = 88;
 	static final int LEFT_END = BTN_X + TOGGLE_W;
 
 	private HeadSkinPanel() {
@@ -24,19 +25,19 @@ public final class HeadSkinPanel {
 	public record Slot(int labelX, int x, int y, int w) {
 	}
 
-	public record Placement(boolean stacked, int bottomShift, boolean drawLabels, Slot skin, Slot lock, Slot cape, Slot source) {
+	public record Placement(boolean stacked, int bottomShift, boolean drawLabels, Slot skin, Slot lock, Slot cape, Slot source, Slot password) {
 	}
 
 	public static Placement forPoser(int width, int height, Font font, int toggleCount) {
 		int firstExtra = toggleCount + 2;
-		int stackBottom = 20 + (firstExtra + 3) * ROW + BTN_H;
+		int stackBottom = 20 + (firstExtra + 4) * ROW + BTN_H;
 		int bottomY = height / 4 + 134;
 		int poseLeft = width - 120;
 		int copyBottom = bottomY + ROW + BTN_H;
 		int shift = 4 * ROW;
 
 		boolean stackFits = bottomY >= stackBottom + 2;
-		boolean stackAfterShift = copyBottom + shift + 2 <= height;
+		boolean stackAfterShift = copyBottom + shift + 26 <= height;
 		if (stackFits || stackAfterShift) {
 			return stacked(firstExtra, stackFits ? 0 : shift);
 		}
@@ -44,7 +45,7 @@ public final class HeadSkinPanel {
 	}
 
 	public static Placement forStandalone(int width, int height, Font font) {
-		int block = 4 * ROW + 28;
+		int block = 5 * ROW + 28;
 		int top = Math.max(12, (height - block) / 2);
 		if (top + block > height - 8) {
 			top = 8;
@@ -55,6 +56,7 @@ public final class HeadSkinPanel {
 			btnX = width - 8 - SOURCE_W;
 			labelX = Math.max(8, btnX - 90);
 		}
+		int passW = Math.min(PASS_W + 12, Math.max(PASS_W, width - btnX - 8));
 		return new Placement(
 			true,
 			0,
@@ -62,12 +64,13 @@ public final class HeadSkinPanel {
 			new Slot(labelX, btnX, top + 0 * ROW, TOGGLE_W),
 			new Slot(labelX, btnX, top + 1 * ROW, TOGGLE_W),
 			new Slot(labelX, btnX, top + 2 * ROW, TOGGLE_W),
-			new Slot(labelX, btnX, top + 3 * ROW, SOURCE_W)
+			new Slot(labelX, btnX, top + 3 * ROW, SOURCE_W),
+			new Slot(labelX, btnX, top + 4 * ROW, passW)
 		);
 	}
 
 	public static int standaloneDoneY(Placement place, int height) {
-		int under = place.source.y + BTN_H + 8;
+		int under = place.password.y + BTN_H + 8;
 		int max = height - 24;
 		return Math.min(under, max);
 	}
@@ -106,7 +109,8 @@ public final class HeadSkinPanel {
 			row(firstExtra + 0, TOGGLE_W),
 			row(firstExtra + 1, TOGGLE_W),
 			row(firstExtra + 2, TOGGLE_W),
-			row(firstExtra + 3, SOURCE_W)
+			row(firstExtra + 3, SOURCE_W),
+			row(firstExtra + 4, PASS_W)
 		);
 	}
 
@@ -129,14 +133,18 @@ public final class HeadSkinPanel {
 			col = Math.min(96, Math.max(minCol, (width - 24 - gap) / 2));
 			int grid = col * 2 + gap;
 			x = Math.max(8, (width - grid) / 2);
-			y = Math.max(8, Math.min(20, bottomY - 2 * ROW - 4));
-			if (y + 2 * ROW + BTN_H > height - 2) {
-				y = Math.max(2, height - 2 * ROW - 4);
+			y = Math.max(8, Math.min(20, bottomY - 3 * ROW - 4));
+			if (y + 3 * ROW + BTN_H > height - 26) {
+				y = Math.max(2, height - 3 * ROW - 28);
 			}
 		}
 		int sourceW = Math.max(col, Math.min(col + 8, font.width(Component.translatable("pasheadskins.gui.cape_source.essential").getString()) + 14));
 		if (x + col + gap + sourceW > width - 4) {
 			sourceW = col;
+		}
+		int passW = Math.min(col * 2 + gap, Math.max(PASS_W, col + gap + sourceW));
+		if (x + passW > width - 4) {
+			passW = Math.max(TOGGLE_W, width - 4 - x);
 		}
 		return new Placement(
 			false,
@@ -145,7 +153,8 @@ public final class HeadSkinPanel {
 			new Slot(x, x, y, col),
 			new Slot(x + col + gap, x + col + gap, y, col),
 			new Slot(x, x, y + ROW, col),
-			new Slot(x + col + gap, x + col + gap, y + ROW, sourceW)
+			new Slot(x + col + gap, x + col + gap, y + ROW, sourceW),
+			new Slot(x, x, y + 2 * ROW, passW)
 		);
 	}
 

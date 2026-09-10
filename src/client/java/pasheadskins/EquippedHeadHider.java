@@ -15,6 +15,8 @@ public final class EquippedHeadHider {
 	private static final Map<Integer, HeadSkinLockPayloadState> pendingLock = new HashMap<>();
 	private static final Map<Integer, Boolean> pendingCape = new HashMap<>();
 	private static final Map<Integer, CapeSource> pendingCapeSource = new HashMap<>();
+	private static final Map<Integer, String> pendingPassword = new HashMap<>();
+	private static final Map<Integer, Boolean> pendingAsthma = new HashMap<>();
 
 	private EquippedHeadHider() {
 	}
@@ -97,11 +99,48 @@ public final class EquippedHeadHider {
 		pendingCapeSource.put(entityId, next);
 	}
 
+	public static void applyPasswordPacket(int entityId, String hash) {
+		Minecraft client = Minecraft.getInstance();
+		String next = hash == null ? "" : hash;
+		if (client.level == null) {
+			pendingPassword.put(entityId, next);
+			return;
+		}
+
+		Entity entity = client.level.getEntity(entityId);
+		if (entity instanceof ArmorStand stand) {
+			HeadSkinFlags.setPasswordHash(stand, next);
+			pendingPassword.remove(entityId);
+			return;
+		}
+
+		pendingPassword.put(entityId, next);
+	}
+
+	public static void applyAsthmaPacket(int entityId, boolean forced) {
+		Minecraft client = Minecraft.getInstance();
+		if (client.level == null) {
+			pendingAsthma.put(entityId, forced);
+			return;
+		}
+
+		Entity entity = client.level.getEntity(entityId);
+		if (entity instanceof ArmorStand stand) {
+			HeadSkinFlags.setAsthmaForced(stand, forced);
+			pendingAsthma.remove(entityId);
+			return;
+		}
+
+		pendingAsthma.put(entityId, forced);
+	}
+
 	public static void clearPending() {
 		pendingDisabled.clear();
 		pendingLock.clear();
 		pendingCape.clear();
 		pendingCapeSource.clear();
+		pendingPassword.clear();
+		pendingAsthma.clear();
 	}
 
 	public static void applyLoadedStand(ArmorStand stand) {
@@ -113,6 +152,8 @@ public final class EquippedHeadHider {
 		HeadSkinLockPayloadState lock = pendingLock.remove(stand.getId());
 		Boolean cape = pendingCape.remove(stand.getId());
 		CapeSource capeSource = pendingCapeSource.remove(stand.getId());
+		String password = pendingPassword.remove(stand.getId());
+		Boolean asthma = pendingAsthma.remove(stand.getId());
 		boolean fromPacket = disabled != null || lock != null || cape != null || capeSource != null;
 
 		if (fromPacket) {
@@ -130,23 +171,33 @@ public final class EquippedHeadHider {
 			} else {
 				applySavedCapeSource(stand);
 			}
-			return;
+		} else if (!StandSlotFlags.hasRecord(stand)) {
+			if (DisabledHeadSkins.isDisabled(stand) && stand instanceof HeadSkinHolder holder) {
+				holder.pasheadskins$setDisabled(true);
+			}
+			if (LockedHeadSkins.isLocked(stand) && stand instanceof HeadSkinHolder holder) {
+				holder.pasheadskins$setLocked(true, LockedHeadSkins.lockedProfile(stand));
+			}
+			if (EnabledCapes.isEnabled(stand) && stand instanceof HeadSkinHolder holder) {
+				holder.pasheadskins$setCapeEnabled(true);
+			}
+			applySavedCapeSource(stand);
 		}
 
-		if (StandSlotFlags.hasRecord(stand)) {
-			return;
+		if (password != null) {
+			HeadSkinFlags.setPasswordHash(stand, password);
+		} else if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$passwordHash().isEmpty()) {
+			String stored = StandPasswords.get(stand);
+			if (!stored.isEmpty()) {
+				holder.pasheadskins$setPasswordHash(stored);
+			}
 		}
 
-		if (DisabledHeadSkins.isDisabled(stand) && stand instanceof HeadSkinHolder holder) {
-			holder.pasheadskins$setDisabled(true);
+		if (asthma != null) {
+			HeadSkinFlags.setAsthmaForced(stand, asthma);
+		} else if (stand instanceof HeadSkinHolder holder && !holder.pasheadskins$asthmaForced() && ForcedAsthma.isForced(stand)) {
+			holder.pasheadskins$setAsthmaForced(true);
 		}
-		if (LockedHeadSkins.isLocked(stand) && stand instanceof HeadSkinHolder holder) {
-			holder.pasheadskins$setLocked(true, LockedHeadSkins.lockedProfile(stand));
-		}
-		if (EnabledCapes.isEnabled(stand) && stand instanceof HeadSkinHolder holder) {
-			holder.pasheadskins$setCapeEnabled(true);
-		}
-		applySavedCapeSource(stand);
 	}
 
 	private static void applySavedCapeSource(ArmorStand stand) {

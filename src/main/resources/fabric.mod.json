@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"pasheadskins.PasHeadSkinsClient"
+		],
+		"modmenu": [
+			"pasheadskins.PasHeadSkinsModMenu"
 		]
 	},
 	"mixins": [
@@ -44,6 +47,7 @@
 		"armorposer": "*",
 		"skinlayers3d": "*",
 		"waveycapes": "*",
-		"essential": "*"
+		"essential": "*",
+		"modmenu": "*"
 	}
 }

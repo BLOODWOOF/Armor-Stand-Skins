@@ -26,7 +26,11 @@ public class HeadSkinWorldData extends SavedData {
 		UUIDUtil.CODEC_SET.optionalFieldOf("capes", Set.of()).forGetter(data -> data.capes),
 		Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT)
 			.optionalFieldOf("capeSources", Map.of())
-			.forGetter(data -> data.capeSources)
+			.forGetter(data -> data.capeSources),
+		Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.STRING)
+			.optionalFieldOf("passwords", Map.of())
+			.forGetter(data -> data.passwords),
+		UUIDUtil.CODEC_SET.optionalFieldOf("asthmatic", Set.of()).forGetter(data -> data.asthmatic)
 	).apply(instance, HeadSkinWorldData::new));
 
 	public static final SavedDataType<HeadSkinWorldData> TYPE = new SavedDataType<>(
@@ -40,16 +44,27 @@ public class HeadSkinWorldData extends SavedData {
 	private final Map<UUID, ResolvableProfile> locked;
 	private final Set<UUID> capes;
 	private final Map<UUID, Integer> capeSources;
+	private final Map<UUID, String> passwords;
+	private final Set<UUID> asthmatic;
 
 	public HeadSkinWorldData() {
-		this(Set.of(), Map.of(), Set.of(), Map.of());
+		this(Set.of(), Map.of(), Set.of(), Map.of(), Map.of(), Set.of());
 	}
 
-	public HeadSkinWorldData(Set<UUID> disabled, Map<UUID, ResolvableProfile> locked, Set<UUID> capes, Map<UUID, Integer> capeSources) {
+	public HeadSkinWorldData(
+		Set<UUID> disabled,
+		Map<UUID, ResolvableProfile> locked,
+		Set<UUID> capes,
+		Map<UUID, Integer> capeSources,
+		Map<UUID, String> passwords,
+		Set<UUID> asthmatic
+	) {
 		this.disabled = new HashSet<>(disabled);
 		this.locked = new HashMap<>(locked);
 		this.capes = new HashSet<>(capes);
 		this.capeSources = new HashMap<>(capeSources);
+		this.passwords = new HashMap<>(passwords);
+		this.asthmatic = new HashSet<>(asthmatic);
 	}
 
 	public static HeadSkinWorldData get(MinecraftServer server) {
@@ -89,6 +104,21 @@ public class HeadSkinWorldData extends SavedData {
 			holder.pasheadskins$setCapeSource(CapeSource.fromWire(storedSource));
 		} else if (holder.pasheadskins$capeSource() != CapeSource.BOTH) {
 			this.capeSources.put(id, holder.pasheadskins$capeSource().wire());
+			this.setDirty();
+		}
+
+		String storedPass = this.passwords.get(id);
+		if (storedPass != null && !storedPass.isEmpty()) {
+			holder.pasheadskins$setPasswordHash(storedPass);
+		} else if (!holder.pasheadskins$passwordHash().isEmpty()) {
+			this.passwords.put(id, holder.pasheadskins$passwordHash());
+			this.setDirty();
+		}
+
+		if (this.asthmatic.contains(id)) {
+			holder.pasheadskins$setAsthmaForced(true);
+		} else if (holder.pasheadskins$asthmaForced()) {
+			this.asthmatic.add(id);
 			this.setDirty();
 		}
 
@@ -137,11 +167,36 @@ public class HeadSkinWorldData extends SavedData {
 		}
 	}
 
+	public void setPasswordHash(UUID id, String hash) {
+		if (hash == null || hash.isEmpty()) {
+			if (this.passwords.remove(id) != null) {
+				this.setDirty();
+			}
+			return;
+		}
+		String previous = this.passwords.put(id, hash);
+		if (!hash.equals(previous)) {
+			this.setDirty();
+		}
+	}
+
+	public void setAsthmaForced(UUID id, boolean forced) {
+		if (forced) {
+			if (this.asthmatic.add(id)) {
+				this.setDirty();
+			}
+		} else if (this.asthmatic.remove(id)) {
+			this.setDirty();
+		}
+	}
+
 	public void forget(UUID id) {
 		boolean changed = this.disabled.remove(id);
 		changed |= this.locked.remove(id) != null;
 		changed |= this.capes.remove(id);
 		changed |= this.capeSources.remove(id) != null;
+		changed |= this.passwords.remove(id) != null;
+		changed |= this.asthmatic.remove(id);
 		if (changed) {
 			this.setDirty();
 		}

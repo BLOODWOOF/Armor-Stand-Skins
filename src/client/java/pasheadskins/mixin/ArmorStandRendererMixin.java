@@ -138,6 +138,7 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 			}
 
 			head.pasheadskins$setHeadSkin(texture, slim);
+			head.pasheadskins$setAsthmatic(HeadSkinFlags.isAsthmatic(stand));
 			if (HeadSkinFlags.isCapeEnabled(stand)) {
 				Identifier[] cloak;
 				if (locked) {

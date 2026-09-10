@@ -25,5 +25,12 @@
 	"pasheadskins.gui.cape_source.mojang": "Mojang",
 	"pasheadskins.gui.cape_source.essential": "Essential",
 	"pasheadskins.gui.cape_source.both": "Both",
-	"pasheadskins.gui.tooltip.cape_source": "Mojang uses only the vanilla cape. Essential uses only an Essential wardrobe cape. Both uses the Mojang cape when that player has one equipped, otherwise Essential."
+	"pasheadskins.gui.tooltip.cape_source": "Mojang uses only the vanilla cape. Essential uses only an Essential wardrobe cape. Both uses the Mojang cape when that player has one equipped, otherwise Essential.",
+	"pasheadskins.gui.label.password": "Password",
+	"pasheadskins.gui.label.password.short": "Pass",
+	"pasheadskins.gui.hint.password": "Password",
+	"pasheadskins.gui.tooltip.password": "Optional. Leave empty to keep the stand unlocked. Press Enter to set, unlock, or clear.",
+	"pasheadskins.config.title": "Armor Stand Skins",
+	"pasheadskins.config.personality": "Personality",
+	"pasheadskins.config.personality.tooltip": "A few extra client-only stand behaviors. The main skin options do not use this."
 }

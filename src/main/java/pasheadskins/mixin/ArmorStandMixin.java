@@ -40,6 +40,12 @@ public class ArmorStandMixin implements HeadSkinHolder {
 	@Unique
 	private CapeSource pasheadskins$capeSource = CapeSource.BOTH;
 
+	@Unique
+	private String pasheadskins$passwordHash = "";
+
+	@Unique
+	private boolean pasheadskins$asthmaForced;
+
 	@Override
 	public boolean pasheadskins$isDisabled() {
 		return this.pasheadskins$disabled;
@@ -117,6 +123,26 @@ public class ArmorStandMixin implements HeadSkinHolder {
 	@Override
 	public void pasheadskins$setDisabledSlots(int slots) {
 		this.disabledSlots = slots;
+	}
+
+	@Override
+	public String pasheadskins$passwordHash() {
+		return this.pasheadskins$passwordHash == null ? "" : this.pasheadskins$passwordHash;
+	}
+
+	@Override
+	public void pasheadskins$setPasswordHash(String hash) {
+		this.pasheadskins$passwordHash = hash == null ? "" : hash;
+	}
+
+	@Override
+	public boolean pasheadskins$asthmaForced() {
+		return this.pasheadskins$asthmaForced;
+	}
+
+	@Override
+	public void pasheadskins$setAsthmaForced(boolean forced) {
+		this.pasheadskins$asthmaForced = forced;
 	}
 
 	@Inject(method = "readAdditionalSaveData", at = @At("TAIL"))

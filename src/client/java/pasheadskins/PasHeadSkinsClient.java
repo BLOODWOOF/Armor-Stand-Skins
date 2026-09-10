@@ -1,6 +1,7 @@
 package pasheadskins;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -11,10 +12,12 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.component.ResolvableProfile;
+import pasheadskins.net.HeadSkinAsthmaPayload;
 import pasheadskins.net.HeadSkinCapePayload;
 import pasheadskins.net.HeadSkinCapeSourcePayload;
 import pasheadskins.net.HeadSkinDisabledPayload;
 import pasheadskins.net.HeadSkinLockPayload;
+import pasheadskins.net.HeadSkinPasswordPayload;
 
 public class PasHeadSkinsClient implements ClientModInitializer {
 	@Override
@@ -23,6 +26,9 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 		LockedHeadSkins.load();
 		EnabledCapes.load();
 		CapeSources.load();
+		StandPasswords.load();
+		ForcedAsthma.load();
+		HeadSkinClientConfig.load();
 		HeadSkinFlags.setPacketChannel(() -> ClientPlayNetworking.canSend(HeadSkinDisabledPayload.TYPE));
 		PasHeadSkins.setClientInvisibleHook(stand -> HeadSkinControls.setHeadSkinVisible(stand, false));
 		HeadSkinFlags.bind(new HeadSkinFlags.Lookup() {
@@ -91,6 +97,12 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 				CapeSource.fromWire(payload.source())
 			));
 		});
+		ClientPlayNetworking.registerGlobalReceiver(HeadSkinPasswordPayload.TYPE, (payload, context) -> {
+			context.client().execute(() -> EquippedHeadHider.applyPasswordPacket(payload.entityId(), payload.value()));
+		});
+		ClientPlayNetworking.registerGlobalReceiver(HeadSkinAsthmaPayload.TYPE, (payload, context) -> {
+			context.client().execute(() -> EquippedHeadHider.applyAsthmaPacket(payload.entityId(), payload.forced()));
+		});
 
 		ClientEntityEvents.ENTITY_LOAD.register((entity, world) -> {
 			if (entity instanceof ArmorStand stand) {
@@ -103,7 +115,16 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			LockedHeadSkins.save();
 			EnabledCapes.save();
 			CapeSources.save();
+			StandPasswords.save();
+			ForcedAsthma.save();
 			EquippedHeadHider.clearPending();
+			StandLockSession.clear();
+			StandWheeze.clear();
+		});
+
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			StandLockSession.tick(client);
+			StandWheeze.tick(client);
 		});
 
 		if (!FabricLoader.getInstance().isModLoaded("armorposer")) {

@@ -2,12 +2,16 @@ package pasheadskins.mixin;
 
 import com.mrbysco.armorposer.client.gui.ArmorStandScreen;
 import com.mrbysco.armorposer.client.gui.widgets.ToggleButton;
+import java.util.Map;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -24,6 +28,8 @@ import pasheadskins.HeadSkinControls;
 import pasheadskins.HeadSkinFlags;
 import pasheadskins.HeadSkinPanel;
 import pasheadskins.PoserNameVisible;
+import pasheadskins.StandLockSession;
+import pasheadskins.StandLockWidgets;
 import pasheadskins.StandSlotFlags;
 
 @Mixin(ArmorStandScreen.class)
@@ -36,11 +42,26 @@ public abstract class ArmorStandScreenMixin extends Screen {
 	@Final
 	private int whiteColor;
 
+	@Shadow
+	private EditBox nameField;
+
+	@Shadow
+	private Button renameButton;
+
 	@Unique
 	private AbstractWidget pasheadskins$skinToggle;
 
 	@Unique
 	private HeadSkinPanel.Placement pasheadskins$place;
+
+	@Unique
+	private EditBox pasheadskins$password;
+
+	@Unique
+	private Map<AbstractWidget, Boolean> pasheadskins$activeSnap;
+
+	@Unique
+	private Map<EditBox, Boolean> pasheadskins$editSnap;
 
 	protected ArmorStandScreenMixin(Component title) {
 		super(title);
@@ -68,6 +89,48 @@ public abstract class ArmorStandScreenMixin extends Screen {
 			this.pasheadskins$addStacked(stand, place);
 		} else {
 			this.pasheadskins$addCompact(stand, place);
+		}
+
+		this.pasheadskins$password = this.addRenderableWidget(StandLockWidgets.passwordBox(this.font, place.password()));
+		this.pasheadskins$moveNameToBottom(place.bottomShift());
+
+		this.pasheadskins$activeSnap = StandLockWidgets.newActiveMap();
+		this.pasheadskins$editSnap = StandLockWidgets.newEditMap();
+		StandLockWidgets.snapshot(this, this.pasheadskins$password, this.pasheadskins$activeSnap, this.pasheadskins$editSnap);
+		StandLockWidgets.apply(this, this.pasheadskins$password, StandLockSession.frozen(stand), this.pasheadskins$activeSnap, this.pasheadskins$editSnap);
+	}
+
+	@Unique
+	private void pasheadskins$moveNameToBottom(int barShift) {
+		if (this.nameField == null) {
+			return;
+		}
+		int nameY = this.height - 22;
+		int posesY = this.height / 4 + 134;
+		int secondY = posesY + barShift + 22;
+		int lift = 0;
+		if (secondY + 20 > nameY - 2) {
+			lift = (secondY + 20) - (nameY - 2);
+		}
+		if (lift > 0) {
+			for (GuiEventListener child : this.children()) {
+				if (child instanceof AbstractWidget widget
+					&& widget != this.nameField
+					&& widget != this.renameButton
+					&& widget != this.pasheadskins$password
+					&& widget.getY() >= posesY) {
+					widget.setY(widget.getY() - lift);
+				}
+			}
+		}
+		int nameW = 100;
+		int renameW = 40;
+		int x = this.width / 2 - (nameW + 4 + renameW) / 2;
+		this.nameField.setX(x);
+		this.nameField.setY(nameY);
+		if (this.renameButton != null) {
+			this.renameButton.setX(x + nameW + 4);
+			this.renameButton.setY(nameY);
 		}
 	}
 
@@ -165,6 +228,34 @@ public abstract class ArmorStandScreenMixin extends Screen {
 		}));
 	}
 
+	@Unique
+	private void pasheadskins$submitPassword() {
+		ArmorStand stand = this.getArmorStandEntity();
+		if (stand == null || this.pasheadskins$password == null) {
+			return;
+		}
+		HeadSkinControls.submitPassword(stand, this.pasheadskins$password.getValue());
+		this.pasheadskins$password.setValue("");
+		StandLockWidgets.apply(this, this.pasheadskins$password, StandLockSession.frozen(stand), this.pasheadskins$activeSnap, this.pasheadskins$editSnap);
+	}
+
+	@Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+	private void pasheadskins$onPasswordEnter(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+		if (this.pasheadskins$password == null || !this.pasheadskins$password.isFocused() || !event.isConfirmation()) {
+			return;
+		}
+		this.pasheadskins$submitPassword();
+		cir.setReturnValue(true);
+	}
+
+	@Inject(method = "updateEntity", at = @At("HEAD"), cancellable = true)
+	private void pasheadskins$blockLockedUpdates(CompoundTag tag, CallbackInfo ci) {
+		ArmorStand stand = this.getArmorStandEntity();
+		if (stand != null && StandLockSession.frozen(stand)) {
+			ci.cancel();
+		}
+	}
+
 	@Inject(method = "writeFieldsToNBT", at = @At("RETURN"))
 	private void pasheadskins$keepSlotFlags(CallbackInfoReturnable<CompoundTag> cir) {
 		ArmorStand stand = this.getArmorStandEntity();
@@ -183,10 +274,15 @@ public abstract class ArmorStandScreenMixin extends Screen {
 	@Inject(method = "tick", at = @At("RETURN"))
 	private void pasheadskins$hideSkinIfInvisible(CallbackInfo ci) {
 		ArmorStand stand = this.getArmorStandEntity();
-		if (stand == null || this.pasheadskins$skinToggle == null || !stand.isInvisible()) {
+		if (stand == null) {
 			return;
 		}
-		this.pasheadskins$setSkinToggle(false);
+		if (this.pasheadskins$skinToggle != null && stand.isInvisible()) {
+			this.pasheadskins$setSkinToggle(false);
+		}
+		if (this.pasheadskins$password != null && this.pasheadskins$activeSnap != null) {
+			StandLockWidgets.apply(this, this.pasheadskins$password, StandLockSession.frozen(stand), this.pasheadskins$activeSnap, this.pasheadskins$editSnap);
+		}
 	}
 
 	@Inject(method = "extractRenderState", at = @At("RETURN"))
@@ -199,6 +295,7 @@ public abstract class ArmorStandScreenMixin extends Screen {
 		this.pasheadskins$drawLabel(graphics, place.lock(), "pasheadskins.gui.label.lock_skin", "pasheadskins.gui.label.lock_skin.short");
 		this.pasheadskins$drawLabel(graphics, place.cape(), "pasheadskins.gui.label.cape", null);
 		this.pasheadskins$drawLabel(graphics, place.source(), "pasheadskins.gui.label.cape_source", "pasheadskins.gui.label.cape_source.short");
+		this.pasheadskins$drawLabel(graphics, place.password(), "pasheadskins.gui.label.password", "pasheadskins.gui.label.password.short");
 	}
 
 	@Unique

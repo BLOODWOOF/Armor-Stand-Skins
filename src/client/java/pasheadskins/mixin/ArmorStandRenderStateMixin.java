@@ -24,6 +24,9 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 	private boolean pasheadskins$usingHeadSkin;
 
 	@Unique
+	private boolean pasheadskins$asthmatic;
+
+	@Unique
 	private boolean pasheadskins$capeBodySet;
 
 	@Unique
@@ -79,8 +82,19 @@ public class ArmorStandRenderStateMixin implements HeadStandRender {
 		this.pasheadskins$elytraTexture = null;
 		this.pasheadskins$slim = false;
 		this.pasheadskins$usingHeadSkin = false;
+		this.pasheadskins$asthmatic = false;
 		this.pasheadskins$capeBodySet = false;
 		this.pasheadskins$limbsSet = false;
+	}
+
+	@Override
+	public void pasheadskins$setAsthmatic(boolean asthmatic) {
+		this.pasheadskins$asthmatic = asthmatic;
+	}
+
+	@Override
+	public boolean pasheadskins$asthmatic() {
+		return this.pasheadskins$asthmatic;
 	}
 
 	@Override
