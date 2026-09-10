@@ -137,6 +137,7 @@ public final class StandSlotFlags {
 			return tag;
 		}
 		tag.putInt(SLOTS_KEY, holder.pasheadskins$disabledSlots());
+		PoserNameVisible.writeCurrent(stand, tag);
 		CompoundTag pose = new CompoundTag();
 		pose.store("Head", Rotations.CODEC, encodeHead(stand.getHeadPose(), flags));
 		pose.store("Body", Rotations.CODEC, stand.getBodyPose());
@@ -191,6 +192,10 @@ public final class StandSlotFlags {
 			encoded = source * 16 + nibble;
 		}
 		return stripPoseZ(z) + encoded * STEP;
+	}
+
+	public static float visualHeadZ(float z) {
+		return stripPoseZ(z);
 	}
 
 	private static float stripPoseZ(float z) {

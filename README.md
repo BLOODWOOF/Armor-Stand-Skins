@@ -26,7 +26,7 @@ If neither this jar nor Armor Poser is on the dedicated server, flags stay on yo
 1. Place an armor stand.
 2. Put a player head on it.
 
-The stand uses that skin, slim or wide, from the head. Putting a player head on also turns arms on so you can give it items; turning Show Arms off hides the skin arms too. Pose it with vanilla commands or Armor Poser. Use Head Skin if you want the wooden stand back on that entity. Use Lock Skin after the look has loaded if you want to freeze the current skin and cape; unlock it to pick up the live ones again. Use Cape if you want that player's cape (or cape-textured elytra). Use Cape Source to choose Mojang, Essential, or Both.
+The stand uses that skin, slim or wide, from the head. Putting a player head on also turns arms on so you can give it items; turning Show Arms off hides the skin arms too. A stand still on the vanilla rest pose (or a fully zeroed pose) uses the same standing idle as a player; any custom pose stays frozen. Armor Poser's Name Visible toggle stays off after you turn it off. Pose it with vanilla commands or Armor Poser. Use Head Skin if you want the wooden stand back on that entity. Use Lock Skin after the look has loaded if you want to freeze the current skin and cape; unlock it to pick up the live ones again. Use Cape if you want that player's cape (or cape-textured elytra). Use Cape Source to choose Mojang, Essential, or Both.
 
 ## License
 

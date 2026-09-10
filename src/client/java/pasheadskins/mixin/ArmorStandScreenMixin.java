@@ -23,6 +23,7 @@ import pasheadskins.CapeSource;
 import pasheadskins.HeadSkinControls;
 import pasheadskins.HeadSkinFlags;
 import pasheadskins.HeadSkinPanel;
+import pasheadskins.PoserNameVisible;
 import pasheadskins.StandSlotFlags;
 
 @Mixin(ArmorStandScreen.class)
@@ -174,6 +175,7 @@ public abstract class ArmorStandScreenMixin extends Screen {
 				HeadSkinControls.setHeadSkinVisible(stand, false);
 			}
 		}
+		PoserNameVisible.apply(stand, tag);
 		StandSlotFlags.remember(stand);
 		StandSlotFlags.keepInTag(tag);
 	}

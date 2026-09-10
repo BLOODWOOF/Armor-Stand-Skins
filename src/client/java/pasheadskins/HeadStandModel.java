@@ -47,7 +47,12 @@ public class HeadStandModel extends ArmorStandArmorModel {
 
 	@Override
 	public void setupAnim(ArmorStandRenderState state) {
-		super.setupAnim(state);
+		boolean skinned = state instanceof HeadStandRender head && head.pasheadskins$usingHeadSkin();
+		if (skinned && HeadStandIdle.isRestPose(state)) {
+			HeadStandIdle.apply(this, state);
+		} else {
+			super.setupAnim(state);
+		}
 		showOverlay(this.hat);
 		showOverlay(this.jacket);
 		showOverlay(this.leftPants);

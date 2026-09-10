@@ -31,7 +31,8 @@
 		{
 			"config": "pasheadskins.armorposer.mixins.json",
 			"environment": "client"
-		}
+		},
+		"pasheadskins.armorposer.common.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.19.3",
