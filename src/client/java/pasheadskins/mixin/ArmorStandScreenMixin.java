@@ -21,6 +21,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import pasheadskins.CapeSource;
@@ -69,6 +70,15 @@ public abstract class ArmorStandScreenMixin extends Screen {
 
 	@Shadow
 	protected abstract ArmorStand getArmorStandEntity();
+
+	@Redirect(
+		method = {"init()V", "writeFieldsToNBT", "updateEntity"},
+		at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/decoration/ArmorStand;getScale()F"),
+		require = 0
+	)
+	private float pasheadskins$guiScale(ArmorStand stand) {
+		return StandSlotFlags.visualScale(stand.getScale());
+	}
 
 	@Inject(method = "init()V", at = @At("RETURN"))
 	private void pasheadskins$addHeadSkinToggle(CallbackInfo ci) {

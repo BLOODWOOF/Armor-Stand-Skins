@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.entity.player.PlayerSkin;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ResolvableProfile;
@@ -39,15 +40,29 @@ public final class HeadSkinLookup {
 			return false;
 		}
 
-		UUID idA = id(a);
-		UUID idB = id(b);
-		if (idA != null && idB != null) {
-			return idA.equals(idB);
-		}
-
 		String nameA = name(a);
 		String nameB = name(b);
-		return !nameA.isEmpty() && nameA.equalsIgnoreCase(nameB);
+		if (!nameA.isEmpty() && !nameB.isEmpty() && nameA.equalsIgnoreCase(nameB)) {
+			return true;
+		}
+
+		UUID idA = id(a);
+		UUID idB = id(b);
+		return idA != null && idB != null && idA.equals(idB);
+	}
+
+	// Only a named, different player should clear the lock. A skin refresh can
+	// rewrite the skull's uuid without changing who it is.
+	public static boolean differentPlayer(ResolvableProfile helmet, ResolvableProfile locked) {
+		if (helmet == null || locked == null) {
+			return false;
+		}
+		if (sameIdentity(helmet, locked)) {
+			return false;
+		}
+		String helmetName = name(helmet);
+		String lockedName = name(locked);
+		return !helmetName.isEmpty() && !lockedName.isEmpty();
 	}
 
 	public static ResolvableProfile snapshotIfReady(ResolvableProfile helmet) {
@@ -69,18 +84,45 @@ public final class HeadSkinLookup {
 			return null;
 		}
 
-		var info = client.playerSkinRenderCache().getOrDefault(helmet);
-		if (info == null || info.playerSkin() == null || info.playerSkin().body() == null) {
+		// Lock the look thats actually drawn, not whatever texture is packed
+		// into the skull item.
+		PlayerSkin applied = liveBody(client, helmet);
+		GameProfile resolved = null;
+		if (applied == null || applied.body() == null) {
+			var info = client.playerSkinRenderCache().getOrDefault(helmet);
+			if (info == null || info.playerSkin() == null || info.playerSkin().body() == null) {
+				return null;
+			}
+			applied = info.playerSkin();
+			resolved = info.gameProfile();
+		} else {
+			var liveInfo = client.playerSkinRenderCache().getOrDefault(liveQuery(helmet));
+			if (liveInfo != null && liveInfo.gameProfile() != null) {
+				resolved = liveInfo.gameProfile();
+			}
+			if (resolved == null) {
+				var packed = client.playerSkinRenderCache().getOrDefault(helmet);
+				if (packed != null) {
+					resolved = packed.gameProfile();
+				}
+			}
+			if (resolved == null) {
+				resolved = helmet.partialProfile();
+			}
+		}
+
+		if (applied == null || applied.body() == null) {
 			return null;
 		}
 
-		GameProfile resolved = info.gameProfile();
-		if (resolved == null || resolved.properties() == null || !resolved.properties().containsKey("textures")) {
+		ResolvableProfile frozen = identityOf(helmet, resolved);
+		if (frozen == null) {
 			return null;
 		}
 
-		Identifier[] cloak = capeAndElytra(client, helmet, resolved, info.playerSkin(), source);
-		return new FrozenLook(ResolvableProfile.createResolved(resolved), cloak[0], cloak[1]);
+		boolean slim = applied.model() == PlayerModelType.SLIM;
+		Identifier[] cloak = capeAndElytra(client, helmet, resolved, applied, source);
+		return new FrozenLook(frozen, applied.body().texturePath(), slim, cloak[0], cloak[1]);
 	}
 
 	// Drop the cached Mojang fetch so unlock picks up a fresh skin/cape.
@@ -362,6 +404,38 @@ public final class HeadSkinLookup {
 		return preferred != null ? preferred : fallback;
 	}
 
+	// Keep uuid + name only. The live GameProfile carries textures that change
+	// when that player swaps skins, and we dont want that tied to the lock.
+	private static ResolvableProfile identityOf(ResolvableProfile helmet, GameProfile resolved) {
+		UUID uuid = id(helmet);
+		String playerName = name(helmet);
+		if (resolved != null) {
+			if (uuid == null && usable(resolved.id())) {
+				uuid = resolved.id();
+			}
+			if (playerName.isEmpty() && resolved.name() != null && !resolved.name().isBlank()) {
+				playerName = resolved.name();
+			}
+		}
+		if (uuid == null && playerName.isEmpty()) {
+			return helmet;
+		}
+		try {
+			UUID stored = uuid != null ? uuid : Util.NIL_UUID;
+			String storedName = playerName == null ? "" : playerName;
+			return ResolvableProfile.createResolved(new GameProfile(stored, storedName));
+		} catch (Throwable ignored) {
+			if (uuid != null) {
+				return ResolvableProfile.createUnresolved(uuid);
+			}
+			return ResolvableProfile.createUnresolved(playerName);
+		}
+	}
+
+	private static boolean usable(UUID uuid) {
+		return uuid != null && (uuid.getMostSignificantBits() != 0L || uuid.getLeastSignificantBits() != 0L);
+	}
+
 	private static UUID id(ResolvableProfile profile) {
 		if (profile == null) {
 			return null;
@@ -385,6 +459,6 @@ public final class HeadSkinLookup {
 		return profile.name().orElse("");
 	}
 
-	public record FrozenLook(ResolvableProfile profile, Identifier cape, Identifier elytra) {
+	public record FrozenLook(ResolvableProfile profile, Identifier body, boolean slim, Identifier cape, Identifier elytra) {
 	}
 }

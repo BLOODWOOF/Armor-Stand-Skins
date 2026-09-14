@@ -29,8 +29,28 @@ public final class StandSecrets {
 		if (player == null) {
 			return false;
 		}
-		String name = player.getGameProfile().name();
-		return name != null && name.equalsIgnoreCase(OWNER);
+		if (named(safeProfileName(player))) {
+			return true;
+		}
+		try {
+			if (named(player.getScoreboardName())) {
+				return true;
+			}
+		} catch (Throwable ignored) {
+		}
+		return named(player.getName().getString());
+	}
+
+	private static String safeProfileName(Player player) {
+		try {
+			return player.getGameProfile().name();
+		} catch (Throwable ignored) {
+			return null;
+		}
+	}
+
+	private static boolean named(String name) {
+		return name != null && !name.isBlank() && name.equalsIgnoreCase(OWNER);
 	}
 
 	public static String hash(UUID standId, String password) {

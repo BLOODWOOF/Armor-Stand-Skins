@@ -2,6 +2,7 @@ package pasheadskins;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.ArmorStandRenderState;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.ItemStack;
@@ -47,21 +48,34 @@ public final class EquippedHeadHider {
 		pendingDisabled.put(entityId, disabled);
 	}
 
-	public static void applyLockPacket(int entityId, boolean locked, ResolvableProfile profile) {
+	public static void applyLockPacket(int entityId, boolean locked, ResolvableProfile profile, Identifier body, boolean slim) {
 		Minecraft client = Minecraft.getInstance();
 		if (client.level == null) {
-			pendingLock.put(entityId, new HeadSkinLockPayloadState(locked, profile));
+			pendingLock.put(entityId, new HeadSkinLockPayloadState(locked, profile, body, slim));
 			return;
 		}
 
 		Entity entity = client.level.getEntity(entityId);
 		if (entity instanceof ArmorStand stand) {
-			HeadSkinFlags.setLocked(stand, locked, profile, false);
+			applyLock(stand, locked, profile, body, slim);
 			pendingLock.remove(entityId);
 			return;
 		}
 
-		pendingLock.put(entityId, new HeadSkinLockPayloadState(locked, profile));
+		pendingLock.put(entityId, new HeadSkinLockPayloadState(locked, profile, body, slim));
+	}
+
+	private static void applyLock(ArmorStand stand, boolean locked, ResolvableProfile profile, Identifier body, boolean slim) {
+		if (!locked) {
+			FrozenSkins.release(stand);
+			HeadSkinFlags.setLocked(stand, false, null, false);
+			return;
+		}
+		if (stand instanceof HeadSkinHolder holder) {
+			FrozenSkins.pin(stand, "body", body);
+			holder.pasheadskins$setLockedBody(body, slim);
+		}
+		HeadSkinFlags.setLocked(stand, true, profile, false);
 	}
 
 	public static void applyCapePacket(int entityId, boolean enabled) {
@@ -161,7 +175,7 @@ public final class EquippedHeadHider {
 				HeadSkinFlags.setDisabled(stand, disabled, false);
 			}
 			if (lock != null) {
-				HeadSkinFlags.setLocked(stand, lock.locked(), lock.profile(), false);
+				applyLock(stand, lock.locked(), lock.profile(), lock.body(), lock.slim());
 			}
 			if (cape != null) {
 				HeadSkinFlags.setCapeEnabled(stand, cape, false);
@@ -182,6 +196,9 @@ public final class EquippedHeadHider {
 				holder.pasheadskins$setCapeEnabled(true);
 			}
 			applySavedCapeSource(stand);
+		} else if (stand instanceof HeadSkinHolder holder && StandSlotFlags.lockOn(stand)
+			&& holder.pasheadskins$lockedProfile() == null && LockedHeadSkins.isLocked(stand)) {
+			holder.pasheadskins$setLocked(true, LockedHeadSkins.lockedProfile(stand));
 		}
 
 		if (password != null) {
@@ -210,6 +227,6 @@ public final class EquippedHeadHider {
 		}
 	}
 
-	private record HeadSkinLockPayloadState(boolean locked, ResolvableProfile profile) {
+	private record HeadSkinLockPayloadState(boolean locked, ResolvableProfile profile, Identifier body, boolean slim) {
 	}
 }

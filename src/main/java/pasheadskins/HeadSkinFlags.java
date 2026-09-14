@@ -2,6 +2,7 @@ package pasheadskins;
 
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.component.ResolvableProfile;
@@ -64,16 +65,18 @@ public final class HeadSkinFlags {
 	}
 
 	public static ResolvableProfile lockedProfile(ArmorStand stand) {
-		if (StandSlotFlags.hasRecord(stand) && StandSlotFlags.lockOn(stand)) {
-			if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isLocked()) {
-				return holder.pasheadskins$lockedProfile();
-			}
-			return helmetProfile(stand);
-		}
 		if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isLocked()) {
 			return holder.pasheadskins$lockedProfile();
 		}
 		return lookup == null ? null : lookup.lockedProfile(stand);
+	}
+
+	public static Identifier lockedBody(ArmorStand stand) {
+		return stand instanceof HeadSkinHolder holder ? holder.pasheadskins$lockedBody() : null;
+	}
+
+	public static boolean lockedSlim(ArmorStand stand) {
+		return stand instanceof HeadSkinHolder holder && holder.pasheadskins$lockedSlim();
 	}
 
 	public static void setLocked(ArmorStand stand, boolean locked, ResolvableProfile profile) {
@@ -155,6 +158,7 @@ public final class HeadSkinFlags {
 		if (stand instanceof HeadSkinHolder holder) {
 			holder.pasheadskins$setPasswordHash(hash == null ? "" : hash);
 		}
+		StandPassGuard.sync(stand);
 	}
 
 	public static boolean hasPassword(ArmorStand stand) {

@@ -30,7 +30,17 @@ public class HeadSkinWorldData extends SavedData {
 		Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.STRING)
 			.optionalFieldOf("passwords", Map.of())
 			.forGetter(data -> data.passwords),
-		UUIDUtil.CODEC_SET.optionalFieldOf("asthmatic", Set.of()).forGetter(data -> data.asthmatic)
+		UUIDUtil.CODEC_SET.optionalFieldOf("asthmatic", Set.of()).forGetter(data -> data.asthmatic),
+		Codec.unboundedMap(UUIDUtil.STRING_CODEC, Identifier.CODEC)
+			.optionalFieldOf("lockedBodies", Map.of())
+			.forGetter(data -> data.lockedBodies),
+		UUIDUtil.CODEC_SET.optionalFieldOf("lockedSlim", Set.of()).forGetter(data -> data.lockedSlim),
+		Codec.unboundedMap(UUIDUtil.STRING_CODEC, Identifier.CODEC)
+			.optionalFieldOf("lockedCapes", Map.of())
+			.forGetter(data -> data.lockedCapes),
+		Codec.unboundedMap(UUIDUtil.STRING_CODEC, Identifier.CODEC)
+			.optionalFieldOf("lockedElytras", Map.of())
+			.forGetter(data -> data.lockedElytras)
 	).apply(instance, HeadSkinWorldData::new));
 
 	public static final SavedDataType<HeadSkinWorldData> TYPE = new SavedDataType<>(
@@ -46,9 +56,13 @@ public class HeadSkinWorldData extends SavedData {
 	private final Map<UUID, Integer> capeSources;
 	private final Map<UUID, String> passwords;
 	private final Set<UUID> asthmatic;
+	private final Map<UUID, Identifier> lockedBodies;
+	private final Set<UUID> lockedSlim;
+	private final Map<UUID, Identifier> lockedCapes;
+	private final Map<UUID, Identifier> lockedElytras;
 
 	public HeadSkinWorldData() {
-		this(Set.of(), Map.of(), Set.of(), Map.of(), Map.of(), Set.of());
+		this(Set.of(), Map.of(), Set.of(), Map.of(), Map.of(), Set.of(), Map.of(), Set.of(), Map.of(), Map.of());
 	}
 
 	public HeadSkinWorldData(
@@ -57,7 +71,11 @@ public class HeadSkinWorldData extends SavedData {
 		Set<UUID> capes,
 		Map<UUID, Integer> capeSources,
 		Map<UUID, String> passwords,
-		Set<UUID> asthmatic
+		Set<UUID> asthmatic,
+		Map<UUID, Identifier> lockedBodies,
+		Set<UUID> lockedSlim,
+		Map<UUID, Identifier> lockedCapes,
+		Map<UUID, Identifier> lockedElytras
 	) {
 		this.disabled = new HashSet<>(disabled);
 		this.locked = new HashMap<>(locked);
@@ -65,6 +83,10 @@ public class HeadSkinWorldData extends SavedData {
 		this.capeSources = new HashMap<>(capeSources);
 		this.passwords = new HashMap<>(passwords);
 		this.asthmatic = new HashSet<>(asthmatic);
+		this.lockedBodies = new HashMap<>(lockedBodies);
+		this.lockedSlim = new HashSet<>(lockedSlim);
+		this.lockedCapes = new HashMap<>(lockedCapes);
+		this.lockedElytras = new HashMap<>(lockedElytras);
 	}
 
 	public static HeadSkinWorldData get(MinecraftServer server) {
@@ -76,6 +98,12 @@ public class HeadSkinWorldData extends SavedData {
 			return;
 		}
 
+		// Bits on the stand survive chunk unload. Put those back first so lock
+		// doesnt get wiped when world data is a tick behind.
+		if (StandSlotFlags.hasRecord(stand)) {
+			StandSlotFlags.applyToHolder(stand);
+		}
+
 		UUID id = stand.getUUID();
 		if (this.disabled.contains(id)) {
 			holder.pasheadskins$setDisabled(true);
@@ -85,11 +113,19 @@ public class HeadSkinWorldData extends SavedData {
 		}
 
 		ResolvableProfile stored = this.locked.get(id);
-		if (stored != null) {
+		Identifier storedBody = persistable(this.lockedBodies.get(id));
+		if (stored != null || storedBody != null) {
+			if (storedBody != null) {
+				holder.pasheadskins$setLockedBody(storedBody, this.lockedSlim.contains(id));
+			}
+			Identifier cape = persistable(this.lockedCapes.get(id));
+			Identifier elytra = persistable(this.lockedElytras.get(id));
+			if (cape != null || elytra != null) {
+				holder.pasheadskins$setLockedCloak(cape, elytra);
+			}
 			holder.pasheadskins$setLocked(true, stored);
 		} else if (holder.pasheadskins$isLocked()) {
-			this.locked.put(id, holder.pasheadskins$lockedProfile());
-			this.setDirty();
+			this.rememberLock(id, holder);
 		}
 
 		if (this.capes.contains(id)) {
@@ -115,13 +151,9 @@ public class HeadSkinWorldData extends SavedData {
 			this.setDirty();
 		}
 
-		if (this.asthmatic.contains(id)) {
-			holder.pasheadskins$setAsthmaForced(true);
-		} else if (holder.pasheadskins$asthmaForced()) {
-			this.asthmatic.add(id);
-			this.setDirty();
-		}
+		holder.pasheadskins$setAsthmaForced(this.asthmatic.contains(id));
 
+		StandPassGuard.sync(stand);
 		StandSlotFlags.writeOntoStand(stand);
 	}
 
@@ -136,12 +168,42 @@ public class HeadSkinWorldData extends SavedData {
 	}
 
 	public void setLocked(UUID id, boolean locked, ResolvableProfile profile) {
-		if (locked && profile != null) {
-			this.locked.put(id, profile);
-			this.setDirty();
-		} else if (this.locked.remove(id) != null) {
-			this.setDirty();
+		setLocked(id, locked, profile, null, false, null, null);
+	}
+
+	public void setLocked(
+		UUID id,
+		boolean locked,
+		ResolvableProfile profile,
+		Identifier body,
+		boolean slim,
+		Identifier cape,
+		Identifier elytra
+	) {
+		if (!locked) {
+			boolean changed = this.locked.remove(id) != null;
+			changed |= this.lockedBodies.remove(id) != null;
+			changed |= this.lockedSlim.remove(id);
+			changed |= this.lockedCapes.remove(id) != null;
+			changed |= this.lockedElytras.remove(id) != null;
+			if (changed) {
+				this.setDirty();
+			}
+			return;
 		}
+
+		if (profile != null) {
+			this.locked.put(id, profile);
+		}
+		putTexture(this.lockedBodies, id, body);
+		if (slim) {
+			this.lockedSlim.add(id);
+		} else {
+			this.lockedSlim.remove(id);
+		}
+		putTexture(this.lockedCapes, id, cape);
+		putTexture(this.lockedElytras, id, elytra);
+		this.setDirty();
 	}
 
 	public void setCapeEnabled(UUID id, boolean enabled) {
@@ -197,8 +259,45 @@ public class HeadSkinWorldData extends SavedData {
 		changed |= this.capeSources.remove(id) != null;
 		changed |= this.passwords.remove(id) != null;
 		changed |= this.asthmatic.remove(id);
+		changed |= this.lockedBodies.remove(id) != null;
+		changed |= this.lockedSlim.remove(id);
+		changed |= this.lockedCapes.remove(id) != null;
+		changed |= this.lockedElytras.remove(id) != null;
 		if (changed) {
 			this.setDirty();
 		}
+	}
+
+	private void rememberLock(UUID id, HeadSkinHolder holder) {
+		ResolvableProfile profile = holder.pasheadskins$lockedProfile();
+		if (profile != null) {
+			this.locked.put(id, profile);
+		}
+		putTexture(this.lockedBodies, id, holder.pasheadskins$lockedBody());
+		if (holder.pasheadskins$lockedSlim()) {
+			this.lockedSlim.add(id);
+		}
+		putTexture(this.lockedCapes, id, holder.pasheadskins$lockedCape());
+		putTexture(this.lockedElytras, id, holder.pasheadskins$lockedElytra());
+		this.setDirty();
+	}
+
+	private void putTexture(Map<UUID, Identifier> into, UUID id, Identifier texture) {
+		Identifier stored = persistable(texture);
+		if (stored != null) {
+			into.put(id, stored);
+		} else {
+			into.remove(id);
+		}
+	}
+
+	public static Identifier persistable(Identifier id) {
+		if (id == null) {
+			return null;
+		}
+		if ("pasheadskins".equals(id.getNamespace()) && id.getPath().startsWith("locked/")) {
+			return null;
+		}
+		return id;
 	}
 }

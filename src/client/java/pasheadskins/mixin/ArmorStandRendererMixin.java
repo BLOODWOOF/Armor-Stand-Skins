@@ -28,6 +28,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import pasheadskins.EquippedHeadHider;
+import pasheadskins.FrozenSkins;
 import pasheadskins.HeadSkinControls;
 import pasheadskins.HeadSkinFlags;
 import pasheadskins.HeadSkinHolder;
@@ -85,25 +86,13 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 			}
 
 			ResolvableProfile helmet = HeadSkinLookup.profileFromHelmet(stand);
+			boolean locked = HeadSkinFlags.isLocked(stand);
+			if (locked && HeadSkinLookup.differentPlayer(helmet, HeadSkinFlags.lockedProfile(stand))) {
+				HeadSkinControls.setLocked(stand, false);
+				locked = false;
+			}
 			if (helmet == null) {
 				return;
-			}
-
-			boolean locked = HeadSkinFlags.isLocked(stand);
-			ResolvableProfile profile = helmet;
-			if (locked) {
-				ResolvableProfile frozen = HeadSkinFlags.lockedProfile(stand);
-				if (frozen != null && HeadSkinLookup.sameIdentity(helmet, frozen)) {
-					profile = frozen;
-				} else if (StandSlotFlags.lockOn(stand)) {
-					profile = helmet;
-				} else {
-					HeadSkinControls.setLocked(stand, false);
-					locked = false;
-					profile = HeadSkinLookup.liveQuery(helmet);
-				}
-			} else {
-				profile = HeadSkinLookup.liveQuery(helmet);
 			}
 
 			Minecraft client = Minecraft.getInstance();
@@ -116,7 +105,28 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 			PlayerSkin packed = null;
 			GameProfile gameProfile = null;
 
-			if (!locked) {
+			if (locked) {
+				HeadSkinHolder holder = stand instanceof HeadSkinHolder h ? h : null;
+				Identifier frozenBody = holder == null ? null : holder.pasheadskins$lockedBody();
+				frozenBody = FrozenSkins.drawn(stand, "body", frozenBody);
+				if (frozenBody != null) {
+					texture = frozenBody;
+					slim = holder != null && holder.pasheadskins$lockedSlim();
+				} else {
+					ResolvableProfile frozen = HeadSkinFlags.lockedProfile(stand);
+					if (frozen != null) {
+						var info = client.playerSkinRenderCache().getOrDefault(frozen);
+						if (info != null && info.playerSkin() != null && info.playerSkin().body() != null) {
+							texture = info.playerSkin().body().texturePath();
+							slim = info.playerSkin().model() == PlayerModelType.SLIM;
+							packed = info.playerSkin();
+							gameProfile = info.gameProfile();
+						}
+					}
+				}
+			}
+			if (texture == null) {
+				ResolvableProfile profile = HeadSkinLookup.liveQuery(helmet);
 				PlayerSkin live = HeadSkinLookup.liveBody(client, helmet);
 				if (live != null && live.body() != null) {
 					texture = live.body().texturePath();
@@ -124,17 +134,16 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 					packed = live;
 					gameProfile = helmet.partialProfile();
 				}
-			}
-
-			if (texture == null) {
-				var info = client.playerSkinRenderCache().getOrDefault(profile);
-				if (info == null || info.playerSkin() == null || info.playerSkin().body() == null) {
-					return;
+				if (texture == null) {
+					var info = client.playerSkinRenderCache().getOrDefault(profile);
+					if (info == null || info.playerSkin() == null || info.playerSkin().body() == null) {
+						return;
+					}
+					texture = info.playerSkin().body().texturePath();
+					slim = info.playerSkin().model() == PlayerModelType.SLIM;
+					packed = info.playerSkin();
+					gameProfile = info.gameProfile();
 				}
-				texture = info.playerSkin().body().texturePath();
-				slim = info.playerSkin().model() == PlayerModelType.SLIM;
-				packed = info.playerSkin();
-				gameProfile = info.gameProfile();
 			}
 
 			head.pasheadskins$setHeadSkin(texture, slim);
@@ -144,6 +153,8 @@ public abstract class ArmorStandRendererMixin extends LivingEntityRenderer<Armor
 				if (locked) {
 					HeadSkinHolder holder = stand instanceof HeadSkinHolder h ? h : null;
 					cloak = HeadSkinLookup.lockedCloak(holder, packed);
+					cloak[0] = FrozenSkins.drawn(stand, "cape", cloak[0]);
+					cloak[1] = FrozenSkins.drawn(stand, "elytra", cloak[1]);
 				} else {
 					cloak = HeadSkinLookup.capeAndElytra(client, helmet, gameProfile, packed, HeadSkinFlags.capeSource(stand));
 				}

@@ -5,7 +5,7 @@
 	"pasheadskins.gui.tooltip.head_skin": "Render this stand as the player from its helmet. Invisible turns this off. It stays off until you turn it back on.",
 	"pasheadskins.gui.label.lock_skin": "Lock Skin",
 	"pasheadskins.gui.label.lock_skin.short": "Lock",
-	"pasheadskins.gui.tooltip.lock_skin": "Keep the current skin and cape. Unlock to load the live look again. A different player head also unlocks it. Wait until the skin has loaded before locking.",
+	"pasheadskins.gui.tooltip.lock_skin": "Keeps the skin and cape that are on the stand right now, not the skull's packed texture. That player's later skin changes stay frozen. A different player's head unlocks it. Unlock to follow the live look again. Wait until the skin has loaded before locking.",
 	"pasheadskins.gui.label.cape": "Cape",
 	"pasheadskins.gui.tooltip.cape": "Show this player's cape. Off unless you turn it on. An elytra hides the cape and uses the cape texture only while this is on.",
 	"pasheadskins.gui.label.cape_source": "Cape Source",

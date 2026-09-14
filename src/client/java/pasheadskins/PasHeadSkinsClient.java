@@ -85,7 +85,9 @@ public class PasHeadSkinsClient implements ClientModInitializer {
 			context.client().execute(() -> EquippedHeadHider.applyLockPacket(
 				payload.entityId(),
 				payload.locked(),
-				payload.profile().orElse(null)
+				payload.profile().orElse(null),
+				payload.body().orElse(null),
+				payload.slim()
 			));
 		});
 		ClientPlayNetworking.registerGlobalReceiver(HeadSkinCapePayload.TYPE, (payload, context) -> {

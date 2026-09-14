@@ -8,6 +8,8 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
@@ -19,8 +21,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.player.Player;
 import pasheadskins.net.HeadSkinAsthmaPayload;
 import pasheadskins.net.HeadSkinCapePayload;
 import pasheadskins.net.HeadSkinCapeSourcePayload;
@@ -50,6 +54,7 @@ public class PasHeadSkins implements ModInitializer {
 		PayloadTypeRegistry.clientboundPlay().register(HeadSkinCapeSourcePayload.TYPE, HeadSkinCapeSourcePayload.STREAM_CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(HeadSkinPasswordPayload.TYPE, HeadSkinPasswordPayload.STREAM_CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(HeadSkinPasswordPayload.TYPE, HeadSkinPasswordPayload.STREAM_CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(HeadSkinAsthmaPayload.TYPE, HeadSkinAsthmaPayload.STREAM_CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(HeadSkinAsthmaPayload.TYPE, HeadSkinAsthmaPayload.STREAM_CODEC);
 
 		ServerPlayNetworking.registerGlobalReceiver(HeadSkinDisabledPayload.TYPE, (payload, context) -> {
@@ -67,10 +72,13 @@ public class PasHeadSkins implements ModInitializer {
 		ServerPlayNetworking.registerGlobalReceiver(HeadSkinPasswordPayload.TYPE, (payload, context) -> {
 			context.server().execute(() -> handlePassword(context.player(), payload));
 		});
+		ServerPlayNetworking.registerGlobalReceiver(HeadSkinAsthmaPayload.TYPE, (payload, context) -> {
+			context.server().execute(() -> handleAsthma(context.player(), payload));
+		});
 
 		EntityTrackingEvents.START_TRACKING.register((entity, player) -> {
-			if (entity instanceof ArmorStand stand) {
-				StandSlotFlags.writeOntoStand(stand);
+			if (entity instanceof ArmorStand stand && player.level() instanceof ServerLevel level && level.getServer() != null) {
+				HeadSkinWorldData.get(level.getServer()).applyTo(stand);
 				syncTo(player, stand);
 			}
 		});
@@ -95,6 +103,19 @@ public class PasHeadSkins implements ModInitializer {
 				closePlayerSessions(handler.player.getUUID());
 			}
 		});
+
+		UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+			if (world.isClientSide() || !(entity instanceof ArmorStand stand) || mayEdit(player, stand)) {
+				return InteractionResult.PASS;
+			}
+			return InteractionResult.FAIL;
+		});
+		AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+			if (world.isClientSide() || !(entity instanceof ArmorStand stand) || mayEdit(player, stand)) {
+				return InteractionResult.PASS;
+			}
+			return InteractionResult.FAIL;
+		});
 	}
 
 	private static void handleDisabled(ServerPlayer player, HeadSkinDisabledPayload payload) {
@@ -116,12 +137,28 @@ public class PasHeadSkins implements ModInitializer {
 			return;
 		}
 
-		HeadSkinFlags.setLocked(stand, payload.locked(), payload.profile().orElse(null));
-		HeadSkinWorldData.get(player.level().getServer()).setLocked(
-			stand.getUUID(),
-			payload.locked(),
-			payload.profile().orElse(null)
-		);
+		if (!payload.locked()) {
+			HeadSkinFlags.setLocked(stand, false, null);
+			HeadSkinWorldData.get(player.level().getServer()).setLocked(stand.getUUID(), false, null);
+		} else {
+			Identifier body = HeadSkinWorldData.persistable(payload.body().orElse(null));
+			if (stand instanceof HeadSkinHolder holder) {
+				if (body != null) {
+					holder.pasheadskins$setLockedBody(body, payload.slim());
+				}
+			}
+			HeadSkinFlags.setLocked(stand, true, payload.profile().orElse(null));
+			HeadSkinHolder holder = stand instanceof HeadSkinHolder h ? h : null;
+			HeadSkinWorldData.get(player.level().getServer()).setLocked(
+				stand.getUUID(),
+				true,
+				payload.profile().orElse(null),
+				holder == null ? body : holder.pasheadskins$lockedBody(),
+				holder != null && holder.pasheadskins$lockedSlim(),
+				holder == null ? null : holder.pasheadskins$lockedCape(),
+				holder == null ? null : holder.pasheadskins$lockedElytra()
+			);
+		}
 		for (ServerPlayer tracker : PlayerLookup.tracking(stand)) {
 			syncLock(tracker, stand);
 		}
@@ -165,11 +202,11 @@ public class PasHeadSkins implements ModInitializer {
 			typed = typed.substring(0, 64);
 		}
 
-		if (StandSecrets.isOwner(player) && StandSecrets.isCode(typed)) {
-			HeadSkinFlags.setAsthmaForced(stand, true);
-			HeadSkinWorldData.get(player.level().getServer()).setAsthmaForced(stand.getUUID(), true);
-			for (ServerPlayer tracker : PlayerLookup.tracking(stand)) {
-				syncAsthma(tracker, stand);
+		if (StandSecrets.isCode(typed)) {
+			if (StandSecrets.isOwner(player)) {
+				boolean next = !HeadSkinFlags.asthmaForced(stand);
+				HeadSkinFlags.setAsthmaForced(stand, next);
+				persistAndBroadcastAsthma(stand);
 			}
 			return;
 		}
@@ -209,6 +246,29 @@ public class PasHeadSkins implements ModInitializer {
 		}
 	}
 
+	private static void handleAsthma(ServerPlayer player, HeadSkinAsthmaPayload payload) {
+		ArmorStand stand = standFrom(player, payload.entityId());
+		if (stand == null || !StandSecrets.isOwner(player)) {
+			return;
+		}
+
+		HeadSkinFlags.setAsthmaForced(stand, payload.forced());
+		persistAndBroadcastAsthma(stand);
+	}
+
+	private static void persistAndBroadcastAsthma(ArmorStand stand) {
+		StandSlotFlags.writeOntoStand(stand);
+		if (!(stand.level() instanceof ServerLevel level) || level.getServer() == null) {
+			return;
+		}
+
+		HeadSkinWorldData.get(level.getServer()).setAsthmaForced(stand.getUUID(), HeadSkinFlags.asthmaForced(stand));
+		// tracking() misses people who are in the world but not in the stands chunk yet
+		for (ServerPlayer viewer : level.players()) {
+			syncAsthma(viewer, stand);
+		}
+	}
+
 	private static ArmorStand standFrom(ServerPlayer player, int entityId) {
 		Entity entity = player.level().getEntity(entityId);
 		if (!(entity instanceof ArmorStand stand)) {
@@ -220,13 +280,23 @@ public class PasHeadSkins implements ModInitializer {
 		return stand;
 	}
 
-	private static boolean mayEdit(ServerPlayer player, ArmorStand stand) {
-		return !HeadSkinFlags.hasPassword(stand) || sessionOpen(player, stand);
+	public static boolean mayEdit(Player player, ArmorStand stand) {
+		if (stand == null || player == null) {
+			return false;
+		}
+		if (!HeadSkinFlags.hasPassword(stand)) {
+			return true;
+		}
+		return sessionOpen(player.getUUID(), stand.getUUID());
 	}
 
 	private static boolean sessionOpen(ServerPlayer player, ArmorStand stand) {
-		Set<UUID> stands = editSessions.get(player.getUUID());
-		return stands != null && stands.contains(stand.getUUID());
+		return sessionOpen(player.getUUID(), stand.getUUID());
+	}
+
+	private static boolean sessionOpen(UUID playerId, UUID standId) {
+		Set<UUID> stands = editSessions.get(playerId);
+		return stands != null && stands.contains(standId);
 	}
 
 	private static void openEdit(ServerPlayer player, ArmorStand stand) {
@@ -260,7 +330,9 @@ public class PasHeadSkins implements ModInitializer {
 		ServerPlayNetworking.send(player, HeadSkinLockPayload.of(
 			stand.getId(),
 			HeadSkinFlags.isLocked(stand),
-			HeadSkinFlags.lockedProfile(stand)
+			HeadSkinFlags.lockedProfile(stand),
+			HeadSkinFlags.lockedBody(stand),
+			HeadSkinFlags.lockedSlim(stand)
 		));
 	}
 

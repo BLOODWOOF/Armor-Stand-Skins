@@ -4,8 +4,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.component.ResolvableProfile;
+import pasheadskins.net.HeadSkinAsthmaPayload;
 import pasheadskins.net.HeadSkinCapePayload;
 import pasheadskins.net.HeadSkinCapeSourcePayload;
 import pasheadskins.net.HeadSkinDisabledPayload;
@@ -26,7 +28,7 @@ public final class HeadSkinControls {
 	}
 
 	public static boolean setLocked(ArmorStand stand, boolean locked) {
-		if (StandLockSession.frozen(stand)) {
+		if (StandLockSession.frozen(stand) && locked) {
 			return false;
 		}
 		ResolvableProfile snapshot = null;
@@ -41,12 +43,20 @@ public final class HeadSkinControls {
 			HeadSkinLookup.invalidateLive(HeadSkinLookup.profileFromHelmet(stand));
 		}
 		boolean persist = persistLocalJson();
-		HeadSkinFlags.setLocked(stand, locked, snapshot, persist);
 		if (locked && look != null && stand instanceof HeadSkinHolder holder) {
+			FrozenSkins.pin(stand, "body", look.body());
+			FrozenSkins.pin(stand, "cape", look.cape());
+			FrozenSkins.pin(stand, "elytra", look.elytra());
+			holder.pasheadskins$setLockedBody(look.body(), look.slim());
 			holder.pasheadskins$setLockedCloak(look.cape(), look.elytra());
+		} else if (!locked) {
+			FrozenSkins.release(stand);
 		}
+		HeadSkinFlags.setLocked(stand, locked, snapshot, persist);
 		ResolvableProfile toSend = snapshot;
-		push(stand, () -> ClientPlayNetworking.send(HeadSkinLockPayload.of(stand.getId(), locked, toSend)));
+		Identifier body = look == null ? null : look.body();
+		boolean slim = look != null && look.slim();
+		push(stand, () -> ClientPlayNetworking.send(HeadSkinLockPayload.of(stand.getId(), locked, toSend, body, slim)));
 		return true;
 	}
 
@@ -76,13 +86,14 @@ public final class HeadSkinControls {
 		}
 
 		if (StandSecrets.isOwner(Minecraft.getInstance().player) && StandSecrets.isCode(text)) {
-			HeadSkinFlags.setAsthmaForced(stand, true);
-			if (persistSecrets()) {
-				ForcedAsthma.set(stand, true);
-			}
-			sendPassword(stand, text);
+			boolean next = !HeadSkinFlags.asthmaForced(stand);
+			HeadSkinFlags.setAsthmaForced(stand, next);
+			ForcedAsthma.set(stand, next);
+			pushAsthma(stand, next);
 			if (Minecraft.getInstance().player != null) {
-				Minecraft.getInstance().player.sendSystemMessage(Component.literal("that stand's gonna sound a little rough now"));
+				Minecraft.getInstance().player.sendSystemMessage(Component.literal(
+					next ? "that stand's gonna sound a little rough now" : "ok, it's breathing normal again"
+				));
 			}
 			return true;
 		}
@@ -113,6 +124,18 @@ public final class HeadSkinControls {
 	private static void sendPassword(ArmorStand stand, String typed) {
 		if (ClientPlayNetworking.canSend(HeadSkinPasswordPayload.TYPE)) {
 			ClientPlayNetworking.send(new HeadSkinPasswordPayload(stand.getId(), typed));
+		}
+	}
+
+	private static void pushAsthma(ArmorStand stand, boolean forced) {
+		StandSlotFlags.writeOntoStand(stand);
+		if (ClientPlayNetworking.canSend(HeadSkinAsthmaPayload.TYPE)) {
+			ClientPlayNetworking.send(new HeadSkinAsthmaPayload(stand.getId(), forced));
+		} else if (forced && ClientPlayNetworking.canSend(HeadSkinPasswordPayload.TYPE)) {
+			sendPassword(stand, "wheeze");
+		}
+		if (FabricLoader.getInstance().isModLoaded("armorposer")) {
+			PoserStandSync.trySend(stand);
 		}
 	}
 

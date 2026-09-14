@@ -20,6 +20,12 @@ public interface HeadSkinHolder {
 
 	void pasheadskins$setLockedCloak(Identifier cape, Identifier elytra);
 
+	Identifier pasheadskins$lockedBody();
+
+	boolean pasheadskins$lockedSlim();
+
+	void pasheadskins$setLockedBody(Identifier body, boolean slim);
+
 	boolean pasheadskins$isCapeEnabled();
 
 	void pasheadskins$setCapeEnabled(boolean enabled);
