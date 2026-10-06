@@ -119,6 +119,11 @@ public final class StandSlotFlags {
 	}
 
 	public static void writeOntoStand(ArmorStand stand) {
+		// With the mod on the server the payloads carry the flags, so nothing
+		// rides in scale or pose. This channel only serves client-only setups.
+		if (HeadSkinFlags.packetChannelOpen()) {
+			return;
+		}
 		if (!(stand instanceof HeadSkinHolder holder)) {
 			return;
 		}
@@ -131,6 +136,25 @@ public final class StandSlotFlags {
 		stand.setHeadPose(encodeHead(stand.getHeadPose(), flags));
 		remembered.set(flags);
 		rememberedScale.set(visualScale(scaleValue(stand)));
+	}
+
+	// One-time cleanup for stands that still carry the hidden record from
+	// older jars: strip the flag bits from DisabledSlots, scale, and head
+	// pose. The vanilla lock bits from StandPassGuard stay.
+	public static void scrubFromStand(ArmorStand stand) {
+		if (!(stand instanceof HeadSkinHolder holder)) {
+			return;
+		}
+		holder.pasheadskins$setDisabledSlots(holder.pasheadskins$disabledSlots() & ~MASK);
+		try {
+			var attr = stand.getAttribute(Attributes.SCALE);
+			if (attr != null) {
+				attr.setBaseValue(visualScale((float) attr.getBaseValue()));
+			}
+		} catch (Throwable ignored) {
+		}
+		Rotations head = stand.getHeadPose();
+		stand.setHeadPose(new Rotations(head.x(), head.y(), visualHeadZ(head.z())));
 	}
 
 	public static void remember(ArmorStand stand) {
