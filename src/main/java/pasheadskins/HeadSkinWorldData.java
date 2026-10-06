@@ -98,8 +98,9 @@ public class HeadSkinWorldData extends SavedData {
 			return;
 		}
 
-		// Bits on the stand survive chunk unload. Put those back first so lock
-		// doesnt get wiped when world data is a tick behind.
+		// Stands from older jars carried the flags inside scale, pose, and
+		// DisabledSlots. Read that record once so the values reach the saved
+		// data, then scrub it off the stand below.
 		if (StandSlotFlags.hasRecord(stand)) {
 			StandSlotFlags.applyToHolder(stand);
 		}
@@ -154,7 +155,7 @@ public class HeadSkinWorldData extends SavedData {
 		holder.pasheadskins$setAsthmaForced(this.asthmatic.contains(id));
 
 		StandPassGuard.sync(stand);
-		StandSlotFlags.writeOntoStand(stand);
+		StandSlotFlags.scrubFromStand(stand);
 	}
 
 	public void setDisabled(UUID id, boolean value) {

@@ -31,7 +31,7 @@ public final class HeadSkinFlags {
 	}
 
 	public static boolean isDisabled(ArmorStand stand) {
-		if (StandSlotFlags.hasRecord(stand)) {
+		if (!packetChannelOpen() && StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.headOff(stand);
 		}
 		if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isDisabled()) {
@@ -55,7 +55,7 @@ public final class HeadSkinFlags {
 	}
 
 	public static boolean isLocked(ArmorStand stand) {
-		if (StandSlotFlags.hasRecord(stand)) {
+		if (!packetChannelOpen() && StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.lockOn(stand);
 		}
 		if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isLocked()) {
@@ -94,7 +94,7 @@ public final class HeadSkinFlags {
 	}
 
 	public static boolean isCapeEnabled(ArmorStand stand) {
-		if (StandSlotFlags.hasRecord(stand)) {
+		if (!packetChannelOpen() && StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.capeOn(stand);
 		}
 		if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$isCapeEnabled()) {
@@ -118,7 +118,7 @@ public final class HeadSkinFlags {
 	}
 
 	public static CapeSource capeSource(ArmorStand stand) {
-		if (StandSlotFlags.hasRecord(stand)) {
+		if (!packetChannelOpen() && StandSlotFlags.hasRecord(stand)) {
 			return StandSlotFlags.capeSource(stand);
 		}
 		if (stand instanceof HeadSkinHolder holder && holder.pasheadskins$capeSource() != CapeSource.BOTH) {
